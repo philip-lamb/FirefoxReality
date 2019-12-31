@@ -15,12 +15,10 @@ import android.view.animation.AnimationUtils;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
-import org.mozilla.gecko.util.ThreadUtils;
 import org.mozilla.vrbrowser.R;
 import org.mozilla.vrbrowser.audio.AudioEngine;
 import org.mozilla.vrbrowser.ui.views.CustomListView;
@@ -345,29 +343,16 @@ public class SuggestionsWidget extends UIWidget implements WidgetManagerDelegate
                 return false;
             }
 
-            View favicon = view.findViewById(R.id.favicon);
             TextView title = view.findViewById(R.id.title);
-            View url = view.findViewById(R.id.url);
-            View delete = view.findViewById(R.id.delete);
             int ev = motionEvent.getActionMasked();
             switch (ev) {
                 case MotionEvent.ACTION_HOVER_ENTER:
-                    view.setHovered(true);
-                    favicon.setHovered(true);
-                    title.setHovered(true);
                     title.setShadowLayer(title.getShadowRadius(), title.getShadowDx(), title.getShadowDy(), getContext().getColor(R.color.text_shadow_light));
-                    url.setHovered(true);
-                    delete.setHovered(true);
-                    return true;
+                    return false;
 
                 case MotionEvent.ACTION_HOVER_EXIT:
-                    view.setHovered(false);
-                    favicon.setHovered(false);
-                    title.setHovered(false);
                     title.setShadowLayer(title.getShadowRadius(), title.getShadowDx(), title.getShadowDy(), getContext().getColor(R.color.text_shadow));
-                    url.setHovered(false);
-                    delete.setHovered(false);
-                    return true;
+                    return false;
             }
 
             return false;
