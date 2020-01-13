@@ -40,6 +40,7 @@ public class TrayWidget extends UIWidget implements SessionChangeListener, Windo
 
     private UIButton mAddWindowButton;
     private UIButton mSettingsButton;
+    private UIButton mEnvironmentPassthroughButton;
     private UIButton mPrivateButton;
     private UIButton mBookmarksButton;
     private UIButton mHistoryButton;
@@ -104,6 +105,18 @@ public class TrayWidget extends UIWidget implements SessionChangeListener, Windo
             }
         });
         mSettingsButton.setCurvedTooltip(false);
+
+        mEnvironmentPassthroughButton = findViewById(R.id.environmentPassthroughButton);
+        mEnvironmentPassthroughButton.setOnHoverListener(mButtonScaleHoverListener);
+        mEnvironmentPassthroughButton.setOnClickListener(view -> {
+            if (mAudio != null) {
+                mAudio.playSound(AudioEngine.Sound.CLICK);
+            }
+
+            notifyEnvironmentPassthroughClicked();
+            view.requestFocusFromTouch();
+        });
+        mEnvironmentPassthroughButton.setCurvedTooltip(false);
 
         mBookmarksButton = findViewById(R.id.bookmarksButton);
         mBookmarksButton.setOnHoverListener(mButtonScaleHoverListener);
@@ -245,6 +258,10 @@ public class TrayWidget extends UIWidget implements SessionChangeListener, Windo
 
     private void notifyAddWindowClicked() {
         mTrayListeners.forEach(TrayListener::onAddWindowClicked);
+    }
+
+    private void notifyEnvironmentPassthroughClicked() {
+        mTrayListeners.forEach(TrayListener::onEnvironmentPassthroughClicked);
     }
 
     @Override

@@ -61,6 +61,17 @@
             <include layout="@layout/vertical_separator"/>
 
             <org.mozilla.vrbrowser.ui.views.UIButton
+                android:id="@+id/environmentPassthroughButton"
+                style="@style/trayButtonMiddleTheme"
+                android:tooltipText="@string/environment_passthrough_tooltip"
+                app:tooltipDensity="@dimen/tray_tooltip_density"
+                app:tooltipPosition="top"
+                app:tooltipLayout="@layout/tooltip_tray"
+                android:src="@drawable/ic_icon_tray_visibility"/>
+
+            <include layout="@layout/vertical_separator"/>
+
+            <org.mozilla.vrbrowser.ui.views.UIButton
                 android:id="@+id/settingsButton"
                 style="@style/trayButtonEndTheme"
                 android:tooltipText="@string/settings_tooltip"

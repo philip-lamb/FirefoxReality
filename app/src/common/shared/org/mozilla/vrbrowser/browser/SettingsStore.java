@@ -85,6 +85,7 @@ public class SettingsStore {
     public final static boolean WHATS_NEW_DISPLAYED = false;
     public final static long FXA_LAST_SYNC_NEVER = 0;
     public final static boolean RESTORE_TABS_ENABLED = true;
+    public final static boolean ENVIRONMENT_PASSTHROUGH_ENABLED = false;
 
     // Enable telemetry by default (opt-out).
     public final static boolean CRASH_REPORTING_DEFAULT = false;
@@ -680,6 +681,16 @@ public class SettingsStore {
 
     public boolean isRestoreTabsEnabled() {
         return mPrefs.getBoolean(mContext.getString(R.string.settings_key_restore_tabs), RESTORE_TABS_ENABLED);
+    }
+
+    public void setEnvironmentPassthroughEnabled(boolean isEnabled) {
+        SharedPreferences.Editor editor = mPrefs.edit();
+        editor.putBoolean(mContext.getString(R.string.settings_key_environment_passthrough), isEnabled);
+        editor.commit();
+    }
+
+    public boolean isEnvironmentPassthroughEnabled() {
+        return mPrefs.getBoolean(mContext.getString(R.string.settings_key_environment_passthrough), ENVIRONMENT_PASSTHROUGH_ENABLED);
     }
 
 }

@@ -1317,6 +1317,15 @@ BrowserWorld::SetIsServo(const bool aIsServo) {
   m.externalVR->SetSourceBrowser(aIsServo ? ExternalVR::VRBrowserType::Servo : ExternalVR::VRBrowserType::Gecko);
 }
 
+// Should be invoked from UI/main thread.
+void BrowserWorld::SetEnvironmentPassthrough(const bool aEnabled) {
+  if (aEnabled) {
+    m.device->StartPassthroughVideo();
+  } else {
+    m.device->StopPassthroughVideo();
+  }
+}
+
 JNIEnv*
 BrowserWorld::GetJNIEnv() const {
   ASSERT_ON_RENDER_THREAD(nullptr);
@@ -1658,6 +1667,12 @@ JNI_METHOD(void, setCPULevelNative)
 JNI_METHOD(void, setIsServo)
 (JNIEnv*, jobject, jboolean aIsServo) {
   crow::BrowserWorld::Instance().SetIsServo(aIsServo);
+}
+
+JNI_METHOD(void, setEnvironmentPassthroughNative)
+(JNIEnv*, jobject, jboolean aEnabled) {
+  VRB_DEBUG("setEnvironmentPassthroughNative %s", aEnabled ? "enabled" : "disabled");
+  crow::BrowserWorld::Instance().SetEnvironmentPassthrough(aEnabled);
 }
 
 } // extern "C"

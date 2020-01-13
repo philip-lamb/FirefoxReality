@@ -61,6 +61,7 @@ public:
   void ResetUIYaw();
   void SetCylinderDensity(const float aDensity);
   void SetIsServo(const bool aIsServo);
+  void SetEnvironmentPassthrough(const bool aEnabled);
   void SetCPULevel(const device::CPULevel aLevel);
   JNIEnv* GetJNIEnv() const;
 protected:

@@ -56,6 +56,7 @@ import org.mozilla.vrbrowser.ui.OffscreenDisplay;
 import org.mozilla.vrbrowser.ui.widgets.KeyboardWidget;
 import org.mozilla.vrbrowser.ui.widgets.NavigationBarWidget;
 import org.mozilla.vrbrowser.ui.widgets.RootWidget;
+import org.mozilla.vrbrowser.ui.widgets.TrayListener;
 import org.mozilla.vrbrowser.ui.widgets.TrayWidget;
 import org.mozilla.vrbrowser.ui.widgets.UISurfaceTextureRenderer;
 import org.mozilla.vrbrowser.ui.widgets.UIWidget;
@@ -85,7 +86,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class VRBrowserActivity extends PlatformActivity implements WidgetManagerDelegate, ComponentCallbacks2 {
+public class VRBrowserActivity extends PlatformActivity implements WidgetManagerDelegate, ComponentCallbacks2, TrayListener {
 
     private BroadcastReceiver mCrashReceiver = new BroadcastReceiver() {
         @Override
@@ -329,6 +330,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         // Add widget listeners
         mTray.addListeners(mWindows);
         mTray.setAddWindowVisible(mWindows.canOpenNewWindow());
+        mTray.addListeners(this);
 
         attachToWindow(mWindows.getFocusedWindow(), null);
 
@@ -381,6 +383,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
             // Also prevents a deadlock in onDestroy when the BrowserWidget is released.
             exitImmersiveSync();
         }
+        setEnvironmentPassthrough(false);
         mAudioEngine.pauseEngine();
 
         mWindows.onPause();
@@ -411,6 +414,9 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         mAudioEngine.resumeEngine();
         for (Widget widget: mWidgets.values()) {
             widget.onResume();
+        }
+        if (mSettings.isEnvironmentPassthroughEnabled()) {
+            setEnvironmentPassthrough(true);
         }
         mConnectivityListeners.forEach((listener) -> {
             listener.OnConnectivityChanged(ConnectivityReceiver.isNetworkAvailable(this));
@@ -886,6 +892,24 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
                 widget.handleMoveEvent(aDeltaX, aDeltaY, aDeltaZ, aRotation);
             }
         });
+    }
+
+    // TrayListener
+    @Override
+    public void onEnvironmentPassthroughClicked() {
+        boolean enabled = mSettings.isEnvironmentPassthroughEnabled();
+        mSettings.setEnvironmentPassthroughEnabled(!enabled);
+        setEnvironmentPassthrough(!enabled);
+    }
+
+    @Keep
+    @SuppressWarnings("unused")
+    void setEnvironmentPassthrough(boolean aEnabled) {
+        if (DeviceType.isWaveBuild()) {
+            runOnUiThread(() -> {
+                setEnvironmentPassthroughNative(aEnabled);
+            });
+        }
     }
 
     @Keep
@@ -1497,6 +1521,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     private native void setCylinderDensityNative(float aDensity);
     private native void setCPULevelNative(@CPULevelFlags int aCPULevel);
     private native void setIsServo(boolean aIsServo);
+    private native void setEnvironmentPassthroughNative(boolean aEnabled);
     private native void updateFoveatedLevelNative(int appLevel);
 
 }

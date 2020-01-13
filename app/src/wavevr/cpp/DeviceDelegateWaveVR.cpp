@@ -27,6 +27,7 @@
 #include <wvr/wvr_overlay.h>
 #include <wvr/wvr_system.h>
 #include <wvr/wvr_events.h>
+#include <wvr/wvr_camera.h>
 
 namespace crow {
 
@@ -862,6 +863,24 @@ DeviceDelegateWaveVR::EndFrame(const bool aDiscard) {
   if (result != WVR_SubmitError_None) {
     VRB_ERROR("Failed to submit right eye frame");
   }
+}
+
+void
+DeviceDelegateWaveVR::StartPassthroughVideo() {
+  WVR_CameraInfo cameraInfo;
+  if (!WVR_StartCamera(&cameraInfo)) {
+    VRB_ERROR("Failed to start camera stream");
+    return;
+  }
+  VRB_DEBUG("WVR_CameraInfo: imgType:WVR_CameraImageType_%s imgFormat:WVR_CameraImageFormat_%s width:%d, height:%d size:%d",
+      (cameraInfo.imgType == WVR_CameraImageType_Invalid ? "Invalid" : (cameraInfo.imgType == WVR_CameraImageType_SingleEye ? "SingleEye" : (cameraInfo.imgType == WVR_CameraImageType_DualEye ? "DualEye" : "Unknown"))),
+      (cameraInfo.imgFormat == WVR_CameraImageFormat_Invalid ? "Invalid" : (cameraInfo.imgFormat == WVR_CameraImageFormat_Grayscale ? "Grayscale" : (cameraInfo.imgFormat == WVR_CameraImageFormat_YUV_420 ? "YUV_420" : "Unknown"))),
+      cameraInfo.width, cameraInfo.height, cameraInfo.size);
+}
+
+void
+DeviceDelegateWaveVR::StopPassthroughVideo() {
+  WVR_StopCamera();
 }
 
 bool
