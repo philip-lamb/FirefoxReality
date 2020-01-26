@@ -86,7 +86,7 @@ class PrivacyOptionsView extends SettingsView {
         mPermissionButtons.add(Pair.create(findViewById(R.id.locationPermissionSwitch), Manifest.permission.ACCESS_FINE_LOCATION));
         mPermissionButtons.add(Pair.create(findViewById(R.id.storagePermissionSwitch), Manifest.permission.READ_EXTERNAL_STORAGE));
 
-        if (DeviceType.isOculusBuild() || DeviceType.isWaveBuild()) {
+        if (DeviceType.isOculusBuild()) {
             findViewById(R.id.cameraPermissionSwitch).setVisibility(View.GONE);
         }
 

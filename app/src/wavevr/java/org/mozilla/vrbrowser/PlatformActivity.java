@@ -17,9 +17,6 @@ public class PlatformActivity extends VRActivity {
     static String LOGTAG = SystemUtils.createLogtag(PlatformActivity.class);
 
     public static boolean filterPermission(final String aPermission) {
-        if (aPermission.equals(Manifest.permission.CAMERA)) {
-            return true;
-        }
         return false;
     }
 

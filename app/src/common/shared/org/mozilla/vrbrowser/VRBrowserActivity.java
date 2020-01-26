@@ -897,18 +897,35 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     // TrayListener
     @Override
     public void onEnvironmentPassthroughClicked() {
-        boolean enabled = mSettings.isEnvironmentPassthroughEnabled();
-        mSettings.setEnvironmentPassthroughEnabled(!enabled);
-        setEnvironmentPassthrough(!enabled);
+        boolean enabled = !mSettings.isEnvironmentPassthroughEnabled();
+        setEnvironmentPassthrough(enabled);
     }
 
     @Keep
     @SuppressWarnings("unused")
     void setEnvironmentPassthrough(boolean aEnabled) {
         if (DeviceType.isWaveBuild()) {
-            runOnUiThread(() -> {
-                setEnvironmentPassthroughNative(aEnabled);
-            });
+            if (!isPermissionGranted(android.Manifest.permission.CAMERA)) {
+                requestPermission(
+                        null,
+                        android.Manifest.permission.CAMERA,
+                        new GeckoSession.PermissionDelegate.Callback() {
+                            @Override
+                            public void grant() {
+                                mSettings.setEnvironmentPassthroughEnabled(true);
+                                setEnvironmentPassthroughNative(true);
+                            }
+
+                            @Override
+                            public void reject() {
+                            }
+                        });
+            } else {
+                runOnUiThread(() -> {
+                    mSettings.setEnvironmentPassthroughEnabled(aEnabled);
+                    setEnvironmentPassthroughNative(aEnabled);
+                });
+            }
         }
     }
 
