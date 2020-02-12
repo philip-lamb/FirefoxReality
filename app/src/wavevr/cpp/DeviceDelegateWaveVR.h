@@ -37,6 +37,7 @@ public:
   void EndFrame(const bool aDiscard) override;
   void StartPassthroughVideo() override;
   void StopPassthroughVideo() override;
+  void DrawPassthroughVideo(const device::Eye aWhich) override;
   // DeviceDelegateWaveVR interface
   bool IsRunning();
 protected:

@@ -30,6 +30,7 @@
 //#include <wvr/wvr_camera.h>
 #include <ARX/ARVideo/video.h>
 #include <ARX/ARG/arg.h>
+#include <ARX/ARG/glStateCache2.h>
 
 namespace crow {
 
@@ -903,7 +904,7 @@ DeviceDelegateWaveVR::StartPassthroughVideo() {
   int flags;
   ar2VideoGetParami(m.arVideo, AR_VIDEO_PARAM_DEVICE_FLAGS, &flags);
   m.arVideoIsStereo = flags & AR_VIDEO_STEREO_MODE_SIDE_BY_SIDE; // AR_VIDEO_SOURCE_INFO_STEREO_MODE_MASK
-  ARLOGi("Opened %svideo %dx%d (%s), padded width %d.\n", (m.arVideoIsStereo ? "side-by-side stereo" : ""),
+  ARLOGi("Opened %svideo %dx%d (%s), padded width %d.\n", (m.arVideoIsStereo ? "side-by-side stereo " : ""),
          m.arVideoWidth, m.arVideoHeight, arVideoUtilGetPixelFormatName(m.arVideoPixelFormat),
          m.arVideoWidthPadded);
 
@@ -932,6 +933,46 @@ DeviceDelegateWaveVR::StopPassthroughVideo() {
   m.arVideo = nullptr;
   ARLOGi("Stopped passthrough video.\n");
 }
+
+void
+DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
+  if (!m.arVideo) return;
+
+  int32_t viewport[4];
+  viewport[0] = 0;
+  viewport[1] = 0;
+  viewport[2] = m.renderWidth;
+  viewport[3] = m.renderHeight;
+
+  if (aWhich == device::Eye::Left || (!m.arVideoIsStereo && aWhich == device::Eye::Right)) {
+    glStateCacheFlush();
+    if (!m.arglContextSettingsL) {
+      m.arglContextSettingsL = arglSetupForCurrentContext(&m.arCparamL, m.arVideoPixelFormat);
+      arglPixelBufferSizeSet(m.arglContextSettingsL, m.arVideoWidthPadded, m.arVideoHeight);
+    }
+
+    ar2VideoSetParami(m.arVideo, AR_VIDEO_PARAM_STEREO_NEXTEYE, 0);
+    AR2VideoBufferT *image = ar2VideoGetImage(m.arVideo);
+    if (image && image->fillFlag) {
+      arglPixelBufferDataUpload(m.arglContextSettingsL, image->buff);
+    }
+    arglDispImage(m.arglContextSettingsL, viewport);
+
+  } else if (aWhich == device::Eye::Right) {
+    glStateCacheFlush();
+    if (!m.arglContextSettingsR) {
+      m.arglContextSettingsR = arglSetupForCurrentContext(&m.arCparamL, m.arVideoPixelFormat);
+      arglPixelBufferSizeSet(m.arglContextSettingsR, m.arVideoWidthPadded, m.arVideoHeight);
+    }
+
+    ar2VideoSetParami(m.arVideo, AR_VIDEO_PARAM_STEREO_NEXTEYE, 1);
+    AR2VideoBufferT *image = ar2VideoGetImage(m.arVideo);
+    if (image && image->fillFlag) {
+      arglPixelBufferDataUpload(m.arglContextSettingsR, image->buff);
+    }
+    arglDispImage(m.arglContextSettingsR, viewport);
+
+  }
 
 }
 

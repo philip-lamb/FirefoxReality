@@ -78,6 +78,7 @@ public:
   virtual void DeleteLayer(const VRLayerPtr& aLayer) {};
   virtual void StartPassthroughVideo() {};
   virtual void StopPassthroughVideo() {};
+  virtual void DrawPassthroughVideo(const device::Eye aWhich) {};
 protected:
   DeviceDelegate() {}
 

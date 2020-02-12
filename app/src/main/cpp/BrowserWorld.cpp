@@ -186,9 +186,12 @@ struct BrowserWorld::State {
   WidgetMoverPtr movingWidget;
   WidgetResizerPtr widgetResizer;
   std::unordered_map<vrb::Node*, std::pair<Widget*, float>> depthSorting;
+  bool videoPassThrough;
+  bool videoPassThroughUpdateRequiredOnRenderThread;
 
   State() : paused(true), glInitialized(false), modelsLoaded(false), env(nullptr), cylinderDensity(0.0f), nearClip(0.1f),
-            farClip(300.0f), activity(nullptr), windowsInitialized(false), exitImmersiveRequested(false), loaderDelay(0) {
+            farClip(300.0f), activity(nullptr), windowsInitialized(false), exitImmersiveRequested(false), loaderDelay(0),
+            videoPassThrough(false), videoPassThroughUpdateRequiredOnRenderThread(false) {
     context = RenderContext::Create();
     create = context->GetRenderThreadCreationContext();
     loader = ModelLoaderAndroid::Create(context);
@@ -867,6 +870,14 @@ BrowserWorld::Draw() {
       m.loader->InitializeGL();
     }
   }
+  if (m.videoPassThroughUpdateRequiredOnRenderThread) {
+    if (m.videoPassThrough) {
+        CreateSkyBox("cubemap/void", ""); // Disable Skybox.
+    } else {
+        UpdateEnvironment(); // Enable Skybox.
+    }
+    m.videoPassThroughUpdateRequiredOnRenderThread = false;
+  }
 
   m.device->ProcessEvents();
   m.context->Update();
@@ -1321,8 +1332,12 @@ BrowserWorld::SetIsServo(const bool aIsServo) {
 void BrowserWorld::SetEnvironmentPassthrough(const bool aEnabled) {
   if (aEnabled) {
     m.device->StartPassthroughVideo();
+    m.videoPassThrough = true;
+    m.videoPassThroughUpdateRequiredOnRenderThread = true;
   } else {
     m.device->StopPassthroughVideo();
+    m.videoPassThrough = false;
+    m.videoPassThroughUpdateRequiredOnRenderThread = true;
   }
 }
 
@@ -1361,6 +1376,9 @@ BrowserWorld::DrawWorld() {
   m.rootTransparent->SetTransform(m.device->GetReorientTransform());
 
   m.device->BindEye(device::Eye::Left);
+  if (m.videoPassThrough) {
+    m.device->DrawPassthroughVideo(device::Eye::Left);
+  }
   m.drawList->Reset();
   m.rootOpaqueParent->Cull(*m.cullVisitor, *m.drawList);
   m.drawList->Draw(*m.leftCamera);
@@ -1381,6 +1399,9 @@ BrowserWorld::DrawWorld() {
   // When running the noapi flavor, we only want to render one eye.
 #if !defined(VRBROWSER_NO_VR_API)
   m.device->BindEye(device::Eye::Right);
+  if (m.videoPassThrough) {
+    m.device->DrawPassthroughVideo(device::Eye::Right);
+  }
   m.drawList->Reset();
   m.rootOpaqueParent->Cull(*m.cullVisitor, *m.drawList);
   m.drawList->Draw(*m.rightCamera);
