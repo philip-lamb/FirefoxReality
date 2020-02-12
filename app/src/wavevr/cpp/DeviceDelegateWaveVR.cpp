@@ -27,7 +27,9 @@
 #include <wvr/wvr_overlay.h>
 #include <wvr/wvr_system.h>
 #include <wvr/wvr_events.h>
-#include <wvr/wvr_camera.h>
+//#include <wvr/wvr_camera.h>
+#include <ARX/ARVideo/video.h>
+#include <ARX/ARG/arg.h>
 
 namespace crow {
 
@@ -96,6 +98,16 @@ struct DeviceDelegateWaveVR::State {
   bool ignoreNextRecenter;
   int32_t sixDoFControllerCount;
   bool handsCalculated;
+  AR2VideoParamT *arVideo;
+  int arVideoWidth;
+  int arVideoHeight;
+  int arVideoWidthPadded;
+  AR_PIXEL_FORMAT arVideoPixelFormat;
+  bool arVideoIsStereo;
+  ARParam arCparamL;
+  ARParam arCparamR;
+  ARGL_CONTEXT_SETTINGS_REF arglContextSettingsL;
+  ARGL_CONTEXT_SETTINGS_REF arglContextSettingsR;
   State()
       : isRunning(true)
       , near(0.1f)
@@ -116,6 +128,14 @@ struct DeviceDelegateWaveVR::State {
       , ignoreNextRecenter(false)
       , sixDoFControllerCount(0)
       , handsCalculated(false)
+      , arVideo(nullptr)
+      , arVideoWidth(0)
+      , arVideoHeight(0)
+      , arVideoWidthPadded(0)
+      , arVideoPixelFormat(AR_PIXEL_FORMAT_INVALID)
+      , arVideoIsStereo(false)
+      , arglContextSettingsL(nullptr)
+      , arglContextSettingsR(nullptr)
   {
     memset((void*)devicePairs, 0, sizeof(WVR_DevicePosePair_t) * WVR_DEVICE_COUNT_LEVEL_1);
     gestures = GestureDelegate::Create();
@@ -867,20 +887,52 @@ DeviceDelegateWaveVR::EndFrame(const bool aDiscard) {
 
 void
 DeviceDelegateWaveVR::StartPassthroughVideo() {
-  WVR_CameraInfo cameraInfo;
-  if (!WVR_StartCamera(&cameraInfo)) {
-    VRB_ERROR("Failed to start camera stream");
+  if (m.arVideo) return;
+
+  ARLOGi("Starting passthrough video.\n");
+  m.arVideo = ar2VideoOpen("-module=WaveVR");
+  if (!m.arVideo) {
+    ARLOGe("Failed to start camera stream.\n");
     return;
   }
-  VRB_DEBUG("WVR_CameraInfo: imgType:WVR_CameraImageType_%s imgFormat:WVR_CameraImageFormat_%s width:%d, height:%d size:%d",
-      (cameraInfo.imgType == WVR_CameraImageType_Invalid ? "Invalid" : (cameraInfo.imgType == WVR_CameraImageType_SingleEye ? "SingleEye" : (cameraInfo.imgType == WVR_CameraImageType_DualEye ? "DualEye" : "Unknown"))),
-      (cameraInfo.imgFormat == WVR_CameraImageFormat_Invalid ? "Invalid" : (cameraInfo.imgFormat == WVR_CameraImageFormat_Grayscale ? "Grayscale" : (cameraInfo.imgFormat == WVR_CameraImageFormat_YUV_420 ? "YUV_420" : "Unknown"))),
-      cameraInfo.width, cameraInfo.height, cameraInfo.size);
+  ar2VideoCapStart(m.arVideo);
+
+  ar2VideoGetSize(m.arVideo, &m.arVideoWidth, &m.arVideoHeight);
+  ar2VideoGetBufferSize(m.arVideo, &m.arVideoWidthPadded, nullptr);
+  m.arVideoPixelFormat = ar2VideoGetPixelFormat(m.arVideo);
+  int flags;
+  ar2VideoGetParami(m.arVideo, AR_VIDEO_PARAM_DEVICE_FLAGS, &flags);
+  m.arVideoIsStereo = flags & AR_VIDEO_STEREO_MODE_SIDE_BY_SIDE; // AR_VIDEO_SOURCE_INFO_STEREO_MODE_MASK
+  ARLOGi("Opened %svideo %dx%d (%s), padded width %d.\n", (m.arVideoIsStereo ? "side-by-side stereo" : ""),
+         m.arVideoWidth, m.arVideoHeight, arVideoUtilGetPixelFormatName(m.arVideoPixelFormat),
+         m.arVideoWidthPadded);
+
+  ar2VideoSetParami(m.arVideo, AR_VIDEO_PARAM_STEREO_NEXTEYE, 0);
+  ar2VideoGetCParam(m.arVideo, &m.arCparamL);
+  ARLOGi("%samera matrix:\n", (m.arVideoIsStereo ? "Left c" : "C"));
+  for (int j = 0; j < 3; j++)
+    ARLOGi("    %7.3f %7.3f %7.3f %7.3f\n", m.arCparamL.mat[j][0], m.arCparamL.mat[j][1], m.arCparamL.mat[j][2],
+           m.arCparamL.mat[j][3]);
+  if (m.arVideoIsStereo) {
+    ar2VideoSetParami(m.arVideo, AR_VIDEO_PARAM_STEREO_NEXTEYE, 1);
+    ar2VideoGetCParam(m.arVideo, &m.arCparamR);
+    ARLOGi("Right camera matrix:\n");
+    for (int j = 0; j < 3; j++)
+      ARLOGi("    %7.3f %7.3f %7.3f %7.3f\n", m.arCparamR.mat[j][0], m.arCparamR.mat[j][1], m.arCparamR.mat[j][2],
+             m.arCparamR.mat[j][3]);
+  }
+
 }
 
 void
 DeviceDelegateWaveVR::StopPassthroughVideo() {
-  WVR_StopCamera();
+  if (!m.arVideo) return;
+  ar2VideoCapStop(m.arVideo);
+  ar2VideoClose(m.arVideo);
+  m.arVideo = nullptr;
+  ARLOGi("Stopped passthrough video.\n");
+}
+
 }
 
 bool

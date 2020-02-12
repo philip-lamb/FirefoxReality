@@ -142,6 +142,19 @@ add_library(wavevr-lib SHARED IMPORTED)
 set_target_properties(wavevr-lib PROPERTIES IMPORTED_LOCATION
                       ${CMAKE_SOURCE_DIR}/../third_party/wavesdk/build/wvr_client/jni/${ANDROID_ABI}/libwvr_api.so )
 
+if(WAVEVR)
+    add_library(ARX SHARED IMPORTED)
+    set_target_properties(ARX PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/../third_party/ARX/include"
+        IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/../third_party/ARX/libs/${ANDROID_ABI}/libARX.so" 
+    )
+    target_link_libraries(native-lib ARX)
+    add_custom_command(TARGET native-lib POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/../third_party//ARX/libs/${ANDROID_ABI}/libARX.so
+        ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libARX.so
+    )
+endif()
 
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
