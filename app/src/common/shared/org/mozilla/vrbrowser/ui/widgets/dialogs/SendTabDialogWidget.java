@@ -6,6 +6,7 @@
 package org.mozilla.vrbrowser.ui.widgets.dialogs;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.view.LayoutInflater;
 import android.view.View;
 
@@ -53,19 +54,33 @@ public class SendTabDialogWidget extends SettingDialogWidget implements
     protected void initialize(@NonNull Context aContext) {
         super.initialize(aContext);
 
-        LayoutInflater inflater = LayoutInflater.from(aContext);
+        updateUI();
+
+        mAccounts = ((VRBrowserApplication)getContext().getApplicationContext()).getAccounts();
+    }
+
+    @Override
+    public void updateUI() {
+        super.updateUI();
+
+        LayoutInflater inflater = LayoutInflater.from(getContext());
 
         // Inflate this data binding layout
         mSendTabsDialogBinding = DataBindingUtil.inflate(inflater, R.layout.send_tabs_display, mBinding.content, true);
         mSendTabsDialogBinding.setIsSyncing(false);
         mSendTabsDialogBinding.setIsEmpty(false);
-
-        mAccounts = ((VRBrowserApplication)getContext().getApplicationContext()).getAccounts();
-
+        
         mBinding.headerLayout.setTitle(getResources().getString(R.string.send_tab_dialog_title));
         mBinding.headerLayout.setDescription(R.string.send_tab_dialog_description);
         mBinding.footerLayout.setFooterButtonText(R.string.send_tab_dialog_button);
         mBinding.footerLayout.setFooterButtonClickListener(this::sendTabButtonClick);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        updateUI();
     }
 
     @Override
@@ -107,8 +122,8 @@ public class SendTabDialogWidget extends SettingDialogWidget implements
         // At some point we will support sending to multiple devices or to all of them
         mAccounts.sendTabs(Collections.singletonList(device), session.getCurrentUri(), session.getCurrentTitle());
 
-        // Show the tab sent notifications in the tray
-        mWidgetManager.getTray().showTabSentNotification();
+        // Show the tab sent notifications
+        mWidgetManager.getWindows().showTabSentNotification();
 
         onDismiss();
     }

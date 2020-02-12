@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import androidx.databinding.DataBindingUtil;
 
 import org.mozilla.vrbrowser.R;
+import org.mozilla.vrbrowser.browser.SettingsStore;
 import org.mozilla.vrbrowser.browser.engine.SessionStore;
 import org.mozilla.vrbrowser.databinding.OptionsLanguageDisplayBinding;
 import org.mozilla.vrbrowser.ui.views.settings.RadioGroupSetting;
@@ -29,7 +30,14 @@ class DisplayLanguageOptionsView extends SettingsView {
     }
 
     private void initialize(Context aContext) {
-        LayoutInflater inflater = LayoutInflater.from(aContext);
+        updateUI();
+    }
+
+    @Override
+    protected void updateUI() {
+        super.updateUI();
+
+        LayoutInflater inflater = LayoutInflater.from(getContext());
 
         // Inflate this data binding layout
         mBinding = DataBindingUtil.inflate(inflater, R.layout.options_language_display, this, true);
@@ -38,7 +46,7 @@ class DisplayLanguageOptionsView extends SettingsView {
 
         // Header
         mBinding.headerLayout.setBackClickListener(view -> {
-            mDelegate.showView(new LanguageOptionsView(getContext(), mWidgetManager));
+            mDelegate.showView(SettingViewType.LANGUAGE);
         });
         mBinding.headerLayout.setHelpClickListener(view -> {
             SessionStore.get().getActiveSession().loadUri(getResources().getString(R.string.sumo_language_display_url));
@@ -61,10 +69,12 @@ class DisplayLanguageOptionsView extends SettingsView {
         String currentLocale = LocaleUtils.getCurrentLocale();
         if (currentLocale.equalsIgnoreCase(systemLocale)) {
             setLanguage(LocaleUtils.getIndexForSupportedLocale(systemLocale), false);
+            SettingsStore.getInstance(getContext()).setDisplayLocale(currentLocale);
             return false;
 
         } else {
             setLanguage(LocaleUtils.getIndexForSupportedLocale(systemLocale), true);
+            SettingsStore.getInstance(getContext()).setDisplayLocale(null);
             return true;
         }
     }
@@ -91,9 +101,7 @@ class DisplayLanguageOptionsView extends SettingsView {
             String locale = LocaleUtils.getSupportedLocaleForIndex(checkedId);
             LocaleUtils.setDisplayLocale(getContext(), locale);
 
-            if (mDelegate != null) {
-                mDelegate.showRestartDialog();
-            }
+            mWidgetManager.updateLocale(LocaleUtils.setLocale(getContext()));
         }
     }
 
@@ -102,4 +110,10 @@ class DisplayLanguageOptionsView extends SettingsView {
         return new Point( WidgetPlacement.dpDimension(getContext(), R.dimen.settings_dialog_width),
                 WidgetPlacement.dpDimension(getContext(), R.dimen.settings_dialog_height));
     }
+
+    @Override
+    protected SettingViewType getType() {
+        return SettingViewType.LANGUAGE_DISPLAY;
+    }
+
 }

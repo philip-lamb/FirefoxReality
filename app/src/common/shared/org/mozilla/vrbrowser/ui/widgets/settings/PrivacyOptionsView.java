@@ -35,7 +35,6 @@ class PrivacyOptionsView extends SettingsView {
 
     private OptionsPrivacyBinding mBinding;
     private ArrayList<Pair<SwitchSetting, String>> mPermissionButtons;
-    private SettingsView mPopUpsBlockingExceptions;
 
     public PrivacyOptionsView(Context aContext, WidgetManagerDelegate aWidgetManager) {
         super(aContext, aWidgetManager);
@@ -43,7 +42,16 @@ class PrivacyOptionsView extends SettingsView {
     }
 
     private void initialize(Context aContext) {
-        LayoutInflater inflater = LayoutInflater.from(aContext);
+        updateUI();
+
+        ((Application)aContext.getApplicationContext()).registerActivityLifecycleCallbacks(mLifeCycleListener);
+    }
+
+    @Override
+    protected void updateUI() {
+        super.updateUI();
+
+        LayoutInflater inflater = LayoutInflater.from(getContext());
 
         // Inflate this data binding layout
         mBinding = DataBindingUtil.inflate(inflater, R.layout.options_privacy, this, true);
@@ -55,8 +63,6 @@ class PrivacyOptionsView extends SettingsView {
 
         // Footer
         mBinding.footerLayout.setFooterButtonClickListener(v -> resetOptions());
-
-        ((Application)aContext.getApplicationContext()).registerActivityLifecycleCallbacks(mLifeCycleListener);
 
         // Options
         mBinding.showPrivacyButton.setOnClickListener(v -> {
@@ -77,8 +83,6 @@ class PrivacyOptionsView extends SettingsView {
 
         TextView permissionsTitleText = findViewById(R.id.permissionsTitle);
         permissionsTitleText.setText(getContext().getString(R.string.security_options_permissions_title, getContext().getString(R.string.app_name)));
-
-        mPopUpsBlockingExceptions = new PopUpExceptionsOptionsView(getContext(), mWidgetManager);
 
         mPermissionButtons = new ArrayList<>();
         mPermissionButtons.add(Pair.create(findViewById(R.id.cameraPermissionSwitch), Manifest.permission.CAMERA));
@@ -121,7 +125,7 @@ class PrivacyOptionsView extends SettingsView {
         mBinding.popUpsBlockingSwitch.setOnCheckedChangeListener(mPopUpsBlockingListener);
         setPopUpsBlocking(SettingsStore.getInstance(getContext()).isPopUpsBlockingEnabled(), false);
 
-        mBinding.popUpsBlockingExceptionsButton.setOnClickListener(v -> mDelegate.showView(mPopUpsBlockingExceptions));
+        mBinding.popUpsBlockingExceptionsButton.setOnClickListener(v -> mDelegate.showView(SettingViewType.POPUP_EXCEPTIONS));
 
         mBinding.restoreTabsSwitch.setOnCheckedChangeListener(mRestoreTabsListener);
         setRestoreTabs(SettingsStore.getInstance(getContext()).isRestoreTabsEnabled(), false);
@@ -296,7 +300,7 @@ class PrivacyOptionsView extends SettingsView {
 
     @Override
     public Point getDimensions() {
-        return new Point( WidgetPlacement.dpDimension(getContext(), R.dimen.privacy_options_width),
+        return new Point( WidgetPlacement.dpDimension(getContext(), R.dimen.settings_dialog_width),
                 WidgetPlacement.dpDimension(getContext(), R.dimen.privacy_options_height));
     }
 
@@ -346,5 +350,10 @@ class PrivacyOptionsView extends SettingsView {
             activity.getApplication().unregisterActivityLifecycleCallbacks(mLifeCycleListener);
         }
     };
+
+    @Override
+    protected SettingViewType getType() {
+        return SettingViewType.PRIVACY;
+    }
 
 }

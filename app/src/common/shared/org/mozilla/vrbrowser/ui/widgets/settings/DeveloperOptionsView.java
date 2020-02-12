@@ -31,7 +31,14 @@ class DeveloperOptionsView extends SettingsView {
     }
 
     private void initialize(Context aContext) {
-        LayoutInflater inflater = LayoutInflater.from(aContext);
+        updateUI();
+    }
+
+    @Override
+    protected void updateUI() {
+        super.updateUI();
+
+        LayoutInflater inflater = LayoutInflater.from(getContext());
 
         // Inflate this data binding layout
         mBinding = DataBindingUtil.inflate(inflater, R.layout.options_developer, this, true);
@@ -218,6 +225,11 @@ class DeveloperOptionsView extends SettingsView {
         if (doApply) {
             SessionStore.get().setServo(value);
         }
+    }
+
+    @Override
+    protected SettingViewType getType() {
+        return SettingViewType.LANGUAGE_VOICE;
     }
 
 }

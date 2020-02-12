@@ -81,24 +81,35 @@ public class BookmarksView extends FrameLayout implements BookmarksStore.Bookmar
         initialize(aContext);
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     private void initialize(Context aContext) {
-        LayoutInflater inflater = LayoutInflater.from(aContext);
-
         mUIThreadExecutor = ((VRBrowserApplication)getContext().getApplicationContext()).getExecutors().mainThread();
 
         mBookmarksViewListeners = new ArrayList<>();
 
+        mAccounts = ((VRBrowserApplication)getContext().getApplicationContext()).getAccounts();
+        if (ACCOUNTS_UI_ENABLED) {
+            mAccounts.addAccountListener(mAccountListener);
+            mAccounts.addSyncListener(mSyncListener);
+        }
+
+        SessionStore.get().getBookmarkStore().addListener(this);
+
+        updateUI();
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    public void updateUI() {
+        removeAllViews();
+
+        LayoutInflater inflater = LayoutInflater.from(getContext());
+
         // Inflate this data binding layout
         mBinding = DataBindingUtil.inflate(inflater, R.layout.bookmarks, this, true);
+
         mBinding.setCallback(mBookmarksCallback);
-        mBookmarkAdapter = new BookmarkAdapter(mBookmarkItemCallback, aContext);
+        mBookmarkAdapter = new BookmarkAdapter(mBookmarkItemCallback, getContext());
         mBinding.bookmarksList.setAdapter(mBookmarkAdapter);
-        mBinding.bookmarksList.setOnTouchListener((v, event) -> {
-            v.requestFocusFromTouch();
-            return false;
-        });
-        mBinding.bookmarksList.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> mBookmarksViewListeners.forEach((listener) -> listener.onHideContextMenu(v)));
+        mBinding.bookmarksList.addOnScrollListener(mScrollListener);
         mBinding.bookmarksList.setHasFixedSize(true);
         mBinding.bookmarksList.setItemViewCacheSize(20);
         mBinding.bookmarksList.setDrawingCacheEnabled(true);
@@ -107,12 +118,6 @@ public class BookmarksView extends FrameLayout implements BookmarksStore.Bookmar
         mLayoutManager = (CustomLinearLayoutManager) mBinding.bookmarksList.getLayoutManager();
 
         mBinding.setIsLoading(true);
-
-        mAccounts = ((VRBrowserApplication)getContext().getApplicationContext()).getAccounts();
-        if (ACCOUNTS_UI_ENABLED) {
-            mAccounts.addAccountListener(mAccountListener);
-            mAccounts.addSyncListener(mSyncListener);
-        }
 
         mBinding.setIsSignedIn(mAccounts.isSignedIn());
         boolean isSyncEnabled = mAccounts.isEngineEnabled(SyncEngine.Bookmarks.INSTANCE);
@@ -126,9 +131,6 @@ public class BookmarksView extends FrameLayout implements BookmarksStore.Bookmar
         mBinding.executePendingBindings();
 
         updateBookmarks();
-        SessionStore.get().getBookmarkStore().addListener(this);
-
-        setVisibility(GONE);
 
         setOnTouchListener((v, event) -> {
             v.requestFocusFromTouch();
@@ -143,11 +145,24 @@ public class BookmarksView extends FrameLayout implements BookmarksStore.Bookmar
     public void onDestroy() {
         SessionStore.get().getBookmarkStore().removeListener(this);
 
+        mBinding.bookmarksList.removeOnScrollListener(mScrollListener);
+
         if (ACCOUNTS_UI_ENABLED) {
             mAccounts.removeAccountListener(mAccountListener);
             mAccounts.removeSyncListener(mSyncListener);
         }
     }
+
+    private RecyclerView.OnScrollListener mScrollListener = new RecyclerView.OnScrollListener() {
+        @Override
+        public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+            super.onScrolled(recyclerView, dx, dy);
+
+            if (recyclerView.getScrollState() != RecyclerView.SCROLL_STATE_SETTLING) {
+                recyclerView.requestFocus();
+            }
+        }
+    };
 
     private final BookmarkItemCallback mBookmarkItemCallback = new BookmarkItemCallback() {
         @Override
@@ -164,13 +179,6 @@ public class BookmarksView extends FrameLayout implements BookmarksStore.Bookmar
         public void onDelete(@NonNull View view, @NonNull Bookmark item) {
             mBinding.bookmarksList.requestFocusFromTouch();
 
-            mBookmarkAdapter.removeItem(item);
-            if (mBookmarkAdapter.itemCount() == 0) {
-                mBinding.setIsEmpty(true);
-                mBinding.setIsLoading(false);
-                mBinding.executePendingBindings();
-            }
-
             SessionStore.get().getBookmarkStore().deleteBookmarkById(item.getGuid());
         }
 
@@ -183,8 +191,10 @@ public class BookmarksView extends FrameLayout implements BookmarksStore.Bookmar
             boolean isLastVisibleItem = false;
             if (mBinding.bookmarksList.getLayoutManager() instanceof LinearLayoutManager) {
                 LinearLayoutManager layoutManager = (LinearLayoutManager) mBinding.bookmarksList.getLayoutManager();
-                int lastVisibleItem = layoutManager.findLastCompletelyVisibleItemPosition();
-                if (rowPosition == layoutManager.findLastVisibleItemPosition() && rowPosition != lastVisibleItem) {
+                int lastItem = mBookmarkAdapter.getItemCount();
+                if ((rowPosition == layoutManager.findLastVisibleItemPosition() || rowPosition == layoutManager.findLastCompletelyVisibleItemPosition() ||
+                        rowPosition == layoutManager.findLastVisibleItemPosition()-1 || rowPosition == layoutManager.findLastCompletelyVisibleItemPosition()-1)
+                        && rowPosition != lastItem) {
                     isLastVisibleItem = true;
                 }
             }

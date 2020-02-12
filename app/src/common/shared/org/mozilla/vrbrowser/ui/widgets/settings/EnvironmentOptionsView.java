@@ -29,7 +29,14 @@ class EnvironmentOptionsView extends SettingsView {
     }
 
     private void initialize(Context aContext) {
-        LayoutInflater inflater = LayoutInflater.from(aContext);
+        updateUI();
+    }
+
+    @Override
+    protected void updateUI() {
+        super.updateUI();
+
+        LayoutInflater inflater = LayoutInflater.from(getContext());
 
         // Inflate this data binding layout
         mBinding = DataBindingUtil.inflate(inflater, R.layout.options_environment, this, true);
@@ -112,6 +119,11 @@ class EnvironmentOptionsView extends SettingsView {
         if (doApply) {
             mWidgetManager.updateEnvironment();
         }
+    }
+
+    @Override
+    protected SettingViewType getType() {
+        return SettingViewType.ENVIRONMENT;
     }
 
 }

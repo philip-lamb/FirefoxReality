@@ -26,7 +26,14 @@ class ControllerOptionsView extends SettingsView {
     }
 
     private void initialize(Context aContext) {
-        LayoutInflater inflater = LayoutInflater.from(aContext);
+        updateUI();
+    }
+
+    @Override
+    protected void updateUI() {
+        super.updateUI();
+
+        LayoutInflater inflater = LayoutInflater.from(getContext());
 
         // Inflate this data binding layout
         mBinding = DataBindingUtil.inflate(inflater, R.layout.options_controller, this, true);
@@ -85,5 +92,10 @@ class ControllerOptionsView extends SettingsView {
     private RadioGroupSetting.OnCheckedChangeListener mScrollDirectionListener = (radioGroup, checkedId, doApply) -> {
         setScrollDirection(checkedId, doApply);
     };
+
+    @Override
+    protected SettingViewType getType() {
+        return SettingViewType.CONTROLLER;
+    }
 
 }
