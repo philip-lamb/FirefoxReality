@@ -21,6 +21,7 @@ import org.mozilla.vrbrowser.ui.views.UITextButton;
 import org.mozilla.vrbrowser.ui.widgets.dialogs.SendTabDialogWidget;
 import org.mozilla.vrbrowser.ui.widgets.dialogs.UIDialog;
 import org.mozilla.vrbrowser.utils.BitmapCache;
+import org.mozilla.vrbrowser.utils.UrlUtils;
 
 import java.util.ArrayList;
 
@@ -234,9 +235,15 @@ public class TabsWidget extends UIDialog {
             holder.tabView.setSelecting(mSelecting);
             holder.tabView.setSelected(mSelectedTabs.contains(holder.tabView.getSession()));
             holder.tabView.setActive(SessionStore.get().getActiveSession() == holder.tabView.getSession());
+            if (holder.tabView.getSession() != null) {
+                holder.tabView.setPrivate(UrlUtils.isPrivateAboutPage(getContext(), holder.tabView.getSession().getCurrentUri()));
+            }
             holder.tabView.setDelegate(new TabView.Delegate() {
                 @Override
                 public void onClose(TabView aSender) {
+                    if (aSender.getSession() != null) {
+                        holder.tabView.setPrivate(aSender.getSession().isPrivateMode());
+                    }
                     if (mTabDelegate != null) {
                         ArrayList<Session> closed = new ArrayList<>();
                         closed.add(aSender.getSession());
@@ -251,6 +258,7 @@ public class TabsWidget extends UIDialog {
                         mTabs.remove(holder.getAdapterPosition() - 1);
                         mAdapter.notifyItemRemoved(holder.getAdapterPosition());
                         updateTabCounter();
+
                     } else {
                         onDismiss();
                     }

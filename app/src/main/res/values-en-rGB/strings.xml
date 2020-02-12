@@ -462,4 +462,494 @@
     <string name="developer_options_environments">Environment</string>
 
 
+    <!-- This string labels the radio button that selects the 'Void' environment.
+         The 'Void' environment is an empty space that surrounds the user in empty, black space. -->
+    <string name="developer_options_env_void">Void</string>
+
+    <!-- This string labels the radio button that selects the 'Offworld' environment,
+         a sci-fi themed desert-like environment. The offworld references sci-fi fictional
+         representations of colonies on other non-Earth planets. -->
+    <string name="developer_options_env_offworld">Offworld</string>
+
+    <!-- This string labels the radio button that selects the 'Underwater' environment,
+         a brightly lit submarine themed environment. -->
+    <string name="developer_options_env_underwater">Underwater</string>
+
+    <!-- This string labels the radio button that selects the 'Winter' environment,
+         a snow-covered outdoor winter mountain scene. -->
+    <string name="developer_options_env_winter">Winter</string>
+
+    <!-- This string labels the radio button that selects the 'Meadow' environment,
+         a sunlit grassy meadow filled with tiny flowers and surrounded by mountains. -->
+    <string name="developer_options_env_meadow">Meadow</string>
+
+    <!-- This string labels the radio button that selects the 'Cave' environment,
+         a dimly-lit subterranean environment with fairytale structures set amongst mushrooms. -->
+    <string name="developer_options_env_cave">Cave</string>
+
+    <!-- This string describes the radio buttons used to select the pointer color. -->
+    <string name="developer_options_pointer_color">Pointer Colour</string>
+
+    <!-- This string labels the radio button that sets the pointer color to purple. -->
+    <string name="developer_options_pointer_purple">Purple</string>
+
+    <!-- This string labels the radio button that sets the pointer color to white. -->
+    <string name="developer_options_pointer_white">White</string>
+
+    <!-- This string is used to label a text entry field where the user may enter a new value
+         for the home page. -->
+    <string name="developer_options_homepage">Homepage</string>
+
+    <!-- This string is used to in the FxA account manage panel as a description of the Sign In/Out button. -->
+    <string name="fxa_account_options_account">Account</string>
+
+    <!-- This string is used to in the FxA account manage panel as a header for the sync options. -->
+    <string name="fxa_account_options_sync_title">Sync Settings</string>
+
+    <!-- This string is used to in the FxA account manage panel as the description of the Sync button when is not syncing.
+         The sync button will start syncing when pressed-->
+    <string name="fxa_account_options_sync_now">Synchronise Now</string>
+
+    <!-- This string is used to in the FxA account manage panel as the description of the Sync button while syncon.
+         The sync button will start syncing when pressed-->
+    <string name="fxa_account_options_syncing">Synchronising...</string>
+
+    <!-- This string is used in the FxA account manager panel as a header for the sync options for syncing
+         history, bookmarks, passwords, etc. -->
+    <string name="fxa_account_options_sync_description">Choose what to synchronise on your devices using Firefox</string>
+
+    <!-- This string is used to in the FxA account manage panel as a description for the Bookmarks sync switch. -->
+    <string name="fxa_account_options_bookmarks_sync">Bookmarks</string>
+
+    <!-- This string is used to in the FxA account manage panel as a description for the History sync switch. -->
+    <string name="fxa_account_options_history_sync">History</string>
+
+    <!-- This string is used to in the FxA account manage panel as a description for the Sign In/Out button. -->
+    <string name="fxa_account_options_reset">Reset</string>
+
+    <!-- This string is used to in the Library panels in the sync button when the user is not signed in. -->
+    <string name="fxa_account_sing_to_sync">Sign Into Account To Synchronise</string>
+
+    <!-- This string is used to in the Library panels in the sync button when syncing is off. -->
+    <string name="fxa_account_sync_settings">Sync Settings</string>
+
+    <!-- This string is used to in the Library panels to the left of the sync button to indicate
+         when that the content was just synced. -->
+    <string name="fxa_account_last_synced_now">Last synchronised now</string>
+
+    <!-- This string is used to in the Library panels to the left of the sync button to indicate
+         that the content has never been synced yet. -->
+    <string name="fxa_account_last_no_synced">Not synchronised yet</string>
+
+    <!-- This string is used to in the Library panels to the left of the sync button to indicate
+         that the syncing is off. -->
+    <string name="fxa_account_syncing_off">Synchronisation is turned off</string>
+
+    <!-- This string is used to in the Library panels to the left of the sync button to indicate
+         that there was an error while syncing. -->
+    <string name="fxa_account_last_sync_error">Synchronisation error</string>
+
+    <!-- This string is used to in the Library panels to the left of the sync button to indicate
+         when that the content was just synced some time ago. -->
+    <string name="fxa_account_last_synced">Last synchronised %1$d minutes ago</string>
+
+    <!-- This string labels an Allow/Don't Allow switch in the Privacy and Security settings dialog
+     and is used to enable or disable playback of DRM controlled content. -->
+    <string name="security_options_drm_content">Play DRM-Controlled Content (&lt;a href=&quot;http://somesite.com/&quot;&gt;Learn More&lt;/a&gt;)</string>
+
+    <!-- This string labels an Allow/Don't Allow switch in the Privacy and Security settings dialog
+     and is used to enable or disable the tabs restoration after a fresh app start. -->
+    <string name="security_options_restore_tabs">Restore tabs and windows after restart</string>
+
+    <!-- This string labels an On/Off switch in the Privacy and Security settings dialog
+     and is used to enable or disable tracking protection. -->
+    <string name="security_options_tracking_protection">Tracking Protection</string>
+
+    <!-- This string labels an On/Off switch in the Privacy and Security settings dialog
+     and is used to enable or disable media autoplay. -->
+    <string name="security_options_autoplay">Autoplay Media</string>
+
+    <!-- This string is a label above the group of buttons that indicates that the buttons below
+         relate to Android system permissions granted to the app.
+         '%1$s' will be replaced at runtime with the app's name. -->
+    <string name="security_options_permissions_title">Permissions (Allow %1$s to access)</string>
+
+    <!-- This string is displayed in an alert box if the user attempts to disable an enabled
+         permission and informs the user that the app cannot disable the given permission, that
+         function being reserved by the system permissions app. -->
+    <string name="security_options_permissions_reject_message">This permission can only be disabled in system permissions</string>
+
+    <!-- This string labels the button that displays or enables application access to the device's
+         camera, if a camera is present. -->
+    <string name="security_options_permission_camera">Camera</string>
+
+    <!-- This string labels the button that displays or enables application access to the device's
+         microphone, if a microphone is present. -->
+    <string name="security_options_permission_microphone">Microphone</string>
+
+    <!-- This string labels the button that displays or enables application access to the device's
+         geographic location, if the device supports determination of geographic location. -->
+    <string name="security_options_permission_location">Location</string>
+
+    <!-- This string labels the button that displays or enables the application to post system-wide
+         notifications. -->
+    <string name="security_options_permission_notifications">Notifications</string>
+
+    <!-- This string labels the button that displays or enables application access to the device's
+         "external" storage. Note that on modern systems, "external" is still used in the name
+         of this storage even though the storage may not reside on external removable media. -->
+    <string name="security_options_permission_storage">Read External Storage</string>
+
+    <!-- This string labels the button that displays or enables application access to the device's
+         camera and microphone, if present. -->
+    <string name="security_options_permission_camera_and_microphone">Camera And Microphone</string>
+
+    <!-- This string labels the button in the privacy option panel that enables/disables the pop-up
+         blocking. -->
+    <string name="security_options_block_pup_up_windows">Block Pop-Up Windows</string>
+
+    <!-- This string labels the button in the privacy option panel that open the dialog to add/remove
+         pop-up blocked sites. -->
+    <string name="security_options_block_pup_up_settings">Advanced</string>
+
+    <!-- This string is a label above the group of switches that indicates that the switches below
+         relate to Firefox data collection and use. -->
+    <string name="security_options_speech_data_collection_title">%1$s Data Collection and Use</string>
+
+    <!-- This string labels an Allow/Don't Allow switch in the Privacy and Security settings dialog
+     and is used to enable or disable permission to collect speech data. -->
+    <string name="security_options_speech_data_collect">Allow %1$s to collect speech data</string>
+
+    <!-- This string labels an Allow/Don't Allow switch in the Privacy and Security settings dialog
+     and is used to enable or disable permission to collect telemetry data. -->
+    <string name="security_options_telemetry_send_data">Allow %1$s to send technical and interaction data to Mozilla
+ </string>
+
+    <!-- This string labels an Allow/Don't Allow switch in the Privacy and Security settings dialog
+     and is used to enable or disable permission to send crash reports. -->
+    <string name="security_options_crash_reports_send_data">Allow %1$s to send backlogged crash reports on your behalf
+</string>
+
+    <!-- This string is displayed below the On/Off switch to indicate a switch's current state as 'On'. -->
+    <string name="on">On</string>
+
+    <!-- This string is displayed below the On/Off switch to indicate a switch's current state as 'Off'. -->
+    <string name="off">Off</string>
+
+    <!-- This string is displayed on the left of switched that are used to enable/disable sync when the switch is enabled.
+         i.e. The history switch for Firefox account syncing-->
+    <string name="sync">Synchronise</string>
+
+    <!-- This string is displayed on the left of switched that are used to enable/disable sync when the switch is enabled.
+         i.e. The history switch for Firefox account syncing-->
+    <string name="do_not_sync">Don’t Synchronise</string>
+
+    <!-- This string is displayed in the voice-search dialog box that is shown to the user when they press the
+         button used to initiate Voice Search. -->
+    <string name="voice_search_start">What would you like to search on the Web?</string>
+
+    <!-- This string is displayed in the voice-search dialog box that is shown to the user when they press the
+         button used to initiate Voice Search. -->
+    <string name="voice_search_example">Example: Please say, “360 videos, weather, news…”</string>
+
+    <!-- This string is displayed in a dialog box show to the user while the Voice Search is being
+         performed. It indicates that the search query is running and they should wait for the result. -->
+    <string name="voice_search_decoding">Searching…</string>
+
+    <!-- This string is displayed in a dialog box show to the user while the Voice Search is being
+         performed. It indicates that the search query is running and they should wait for the result. -->
+    <string name="voice_search_error">Sorry! I could not understand.</string>
+
+    <!-- This string is displayed in a dialog box after a failed Voice Search and the system is prompting the
+         user to try the Voice Search again. -->
+    <string name="voice_search_try_again">Please try again.</string>
+
+    <!-- This string is displayed in a dialog after the user has declined permission to use the
+         device's microphone. It explains why Voice Search is not working. -->
+    <string name="voice_search_permission_after_decline">Please allow microphone access to use the Voice Search.</string>
+
+    <!-- This string is displayed in the button at the bottom of the Voice Search dialog. When clicked the Voice search dialog is closed. -->
+    <string name="voice_search_close">Close</string>
+
+    <!-- This string is displayed in the URL bar when it is empty. It informs the user that they
+         may use the URL bar to search the Web or enter a Web address. -->
+    <string name="search_placeholder">Search the Web or enter address</string>
+
+    <!-- This string labels a button that is used to cancel an action.
+         This appears in such contexts as dialog boxes, `<select>` menus, etc. -->
+    <string name="cancel_button">Cancel</string>
+
+    <!-- This string labels a button that is used to approve an action.
+         This appears in such contexts as dialog boxes, `<select>` menus, etc. -->
+    <string name="ok_button">OK</string>
+
+    <!-- This string labels a button that is used to approve an action. -->
+    <string name="back_button">Back</string>
+
+    <!-- This string is displayed in a dialog after an application crash. -->
+    <string name="crash_dialog_heading">We had an issue and crashed</string>
+
+    <!-- This string explains why Mozilla would like the user to allow the crash data to be uploaded.
+         '%1$s' will be replaced at runtime with the app's domain name. -->
+    <string name="crash_dialog_message">Please help Mozilla improve %1$s by sending your crash data. &lt;a href=&quot;more&quot;&gt;Learn More&lt;/a&gt;</string>
+
+    <!-- This string labels a checkbox in the crash dialog box. When checked, the user will no longer
+         be prompted for permission to upload crash data after an application crash. -->
+    <string name="crash_dialog_send_data">Always send data without asking</string>
+
+    <!-- This string labels a button that, when pressed, allows the user to learn more about the
+         currently open dialog. -->
+    <string name="learn_more_button">Learn More</string>
+
+    <!-- This string labels a button that, when pressed, prevents browser-level crash data from being sent to Mozilla. -->
+    <string name="do_not_sent_button">Do Not Send</string>
+
+    <!-- This string labels a button that, when pressed, allows the crash data to be sent to Mozilla. -->
+    <string name="send_data_button">Send Data</string>
+
+
+    <!-- This string appears in the tooltip for the button to change the 'Brightness'
+         (i.e., the brightness level of the background environment), in particular when playing a video. -->
+    <string name="brightness_mode_tooltip">Brightness</string>
+
+    <!-- This string labels the radio option that selects the 'Normal' background in the 'Brightness' mode. -->
+    <string name="brightness_mode_normal">Normal</string>
+
+    <!-- This string labels the radio option that selects the 'Dark' background in the 'Brightness' mode. -->
+    <string name="brightness_mode_dark">Dark</string>
+
+    <!-- This string labels the radio option that selects the 'Void' background in the 'Brightness' mode. -->
+    <string name="brightness_mode_void">Void</string>
+
+    <!-- This string labels a button to open the Video Projection selector. -->
+    <string name="video_mode_tooltip">Video Projection</string>
+
+    <!-- This string is displayed when selecting a video playback mode. -->
+    <string name="video_mode_3d_side">3D Side by Side</string>
+
+    <!-- This string is displayed when selecting a video playback mode. -->
+    <string name="video_mode_360">360</string>
+
+    <!-- This string is displayed when selecting a video playback mode. -->
+    <string name="video_mode_360_stereo">360 Stereo</string>
+
+    <!-- This string is displayed when selecting a video playback mode. -->
+    <string name="video_mode_180">180</string>
+
+    <!-- This string is displayed when selecting a video playback mode. -->
+    <string name="video_mode_180_left_right">Stereo 180 Left to Right</string>
+
+    <!-- This string is displayed when selecting a video playback mode. -->
+    <string name="video_mode_180_top_bottom">Stereo 180 Top to Bottom</string>
+
+    <!-- This string is displayed when selecting a video playback mode. -->
+    <string name="video_mode_2d">2D</string>
+
+    <!-- This string is displayed in a tooltip in the video controls UI. -->
+    <string name="video_controls_play">Play</string>
+
+    <!-- This string is displayed in a tooltip in the video controls UI. -->
+    <string name="video_controls_pause">Pause</string>
+
+    <!-- This string is displayed in a tooltip in the video controls UI. -->
+    <string name="video_controls_mute">Mute</string>
+
+    <!-- This string is displayed in a tooltip in the video controls UI. -->
+    <string name="video_controls_unmute">Unmute</string>
+
+    <!-- This string is displayed in a tooltip below the video controls UI. -->
+    <string name="video_controls_volume">Volume</string>
+
+    <!-- This string is displayed in a tooltip in the video controls UI (e.g., 'Seek +30 seconds').
+    '%1$s' will be replaced at runtime with a duration in seconds (e.g., '30'). -->
+    <string name="video_controls_seek_forward">Seek +%1$s seconds</string>
+
+    <!-- This string is displayed in a tooltip in the video controls UI (e.g., 'Seek -15 seconds').
+    '%1$s' will be replaced at runtime with a duration in seconds (e.g., '15'). -->
+    <string name="video_controls_seek_backward">Seek -%1$s seconds</string>
+
+    <!-- This string is displayed in the video control seekbar when the media is not seekable
+         (e.g., a live video stream). Prefer a short text because it affects the width of the seek bar. -->
+    <string name="video_controls_live">LIVE</string>
+
+    <!-- This string is displayed as the title of the Bookmarks List, which contains the user's bookmarked websites. -->
+    <string name="bookmarks_title">Bookmarks</string>
+
+    <!-- This string is displayed as the title of the Bookmarks List when the bookmarks list is empty. -->
+    <string name="bookmarks_empty">Your Bookmarks List is Empty</string>
+
+    <!-- This string is displayed under the bookmarks title in the bookmarks list. -->
+    <string name="bookmarks_description">Click the @ icon when you’re on a page to add it to your bookmarks.</string>
+
+    <!-- This string is displayed in the middle of the Bookmarks List while the bookmarks are being loaded. -->
+    <string name="bookmarks_loading">Loading Bookmarks</string>
+
+    <!-- This string is displayed as the title of the folder containing mobile bookmarks (after they're synced). -->
+    <string name="bookmarks_mobile_folder_title">Mobile Bookmarks</string>
+
+    <!-- This string is displayed as the title of the folder containing desktop bookmarks (after they're synced). -->
+    <string name="bookmarks_desktop_folder_title">Desktop Bookmarks</string>
+
+    <!-- This string is displayed as the title of the desktop "menu" bookmarks folder. -->
+    <string name="bookmarks_desktop_menu_title">Bookmarks Menu</string>
+
+    <!-- This string is displayed as the title of the desktop "toolbar" bookmarks folder. -->
+    <string name="bookmarks_desktop_toolbar_title">Bookmarks Toolbar</string>
+
+    <!-- This string is displayed as the title of the desktop "unfiled" bookmarks folder. -->
+    <string name="bookmarks_desktop_unfiled_title">Other Bookmarks</string>
+
+    <!-- This string is displayed in a tooltip that appears when a user hovers
+         over an icon representing 'Remove Bookmark' for an individual bookmark
+         item listed in the Bookmarks List. -->
+    <string name="bookmarks_remove">Remove Bookmark</string>
+
+    <!-- This string is displayed in a tooltip that appears in the tray bar on top of the
+         bookmarks tray button then a new item is bookmarked. -->
+    <string name="bookmarks_saved_notification">Saved to Bookmarks!</string>
+
+    <!-- This string is displayed in a tooltip that appears when a user hovers
+         over an icon representing 'Edit This Bookmark' for an individual bookmark
+         item listed in the Bookmarks List. -->
+    <string name="bookmarks_edit">Edit this Bookmark</string>
+
+    <!-- This string is displayed as placeholder text in the search field in the Bookmarks List. -->
+    <string name="bookmarks_search">Search Bookmarks</string>
+
+    <!-- This string is displayed in a tooltip in the bookmark button in the URL bar. -->
+    <string name="bookmarks_bookmark">Bookmark This Page</string>
+
+    <!-- This string is displayed in the Bookmarks List for as the header of the most recently
+         bookmarked items. -->
+    <string name="bookmarks_recent">Recently Bookmarked</string>
+
+    <!-- This string is displayed in the Bookmarks List as a tooltip of the button for showing
+         all the bookmarks. -->
+    <string name="bookmarks_show_all">Show All Bookmarks</string>
+
+    <!-- This string is displayed is the "Sync" button in the bookmarks panel. When pressed the
+         bookmarks are synced with the Firefox account. -->
+    <string name="bookmarks_sync">Synchronise</string>
+
+    <!-- This string is displayed as the title of the history list, which contains the user's visited websites. -->
+    <string name="history_title">History</string>
+
+    <!-- This string is displayed as the title of the history list when the history is empty. -->
+    <string name="history_empty">Your History is Empty</string>
+
+    <!-- This string is displayed under the history title in the history list. -->
+    <string name="history_description">You can access your browsing history here</string>
+
+    <!-- This string is displayed in the middle of the history list while the history is being loaded. -->
+    <string name="history_loading">Loading History</string>
+
+    <!-- This string is displayed as the section title in the history list for history entries that happened today. -->
+    <string name="history_section_today">Today</string>
+
+    <!-- This string is displayed as the section title in the history list for history entries that happened yesterday. -->
+    <string name="history_section_yesterday">Yesterday</string>
+
+    <!-- This string is displayed as the section title in the history list for history entries that happened last week. -->
+    <string name="history_section_last_week">Last Week</string>
+
+    <!-- This string is displayed as the section title in the history list for history entries that happened before last week. -->
+    <string name="history_section_older">Older</string>
+
+    <!-- This string is displayed is the "Clear History" button in the history list. When pressed a dialog for
+         clearing history is displayed. -->
+    <string name="history_clear">Clear History</string>
+
+    <!-- This string is displayed is the "Sync" button in the history panel. When pressed the
+         history is synced with the Firefox account. -->
+    <string name="fxa_sync">Synchronise</string>
+
+    <!-- This string is displayed is the "Sync" button in the history panel when the sync is in progress. -->
+    <string name="fxa_syncing">Synchronising…</string>
+
+    <!-- This string is displayed in the title of the FxA sign out dialog displayed when the user clicks on the Sign out button. -->
+    <string name="fxa_signout_confirmation_title">Sign out of your Firefox Account?</string>
+
+    <!-- This string is displayed in the body of the FxA sign out dialog displayed when the user clicks on the Sign out button. -->
+    <string name="fxa_signout_confirmation_body">When you sign out, you won\'t be able to send or receive tabs from other devices. Your bookmarks and history will also stop synchronising.</string>
+
+    <!-- This string is displayed in the checkbox text of the FxA sign out dialog displayed when the user clicks on the Sign out button.
+         When checked the history and Bookmarks will be deleted from gthe device after signing in. -->
+    <string name="fxa_signout_confirmation_checkbox">Clear history and bookmarks from this device</string>
+
+    <!-- This string is displayed in the cancel button of the FxA sign out dialog displayed when the user clicks on the Sign out button.
+         If clicked the user will be signed out from their FxA account and the dialog will be dismissed. -->
+    <string name="fxa_signout_confirmation_signout">Sign Out</string>
+
+    <!-- This string is displayed in the accept button of the FxA sign out dialog displayed when the user clicks on the Sign out button.
+         If clicked the user will not be signed out from the FxA account and the dialog will be dismissed. -->
+    <string name="fxa_signout_confirmation_cancel">Cancel</string>
+
+    <!-- This string is displayed is the "Cancel" button from the clear history dialog.
+         When pressed the dialog is closed. -->
+    <string name="history_clear_cancel">Cancel</string>
+
+    <!-- This string is displayed is the "Clear Now" button from the clear history dialog.
+         When pressed the selected history range is deleted from the history storage. -->
+    <string name="history_clear_now">Clear Now</string>
+
+    <!-- This string is displayed is the clear history dialog.
+         If selected today's history is deleted from the history storage. -->
+    <string name="history_clear_range_today">Today</string>
+
+    <!-- This string is displayed is the clear history dialog.
+         If selected history since yesterday is deleted from the history storage. -->
+    <string name="history_clear_range_yesterday">Yesterday</string>
+
+    <!-- This string is displayed is the clear history dialog.
+         If selected history since last week is removed from the history storage. -->
+    <string name="history_clear_range_last_week">Last week</string>
+
+    <!-- This string is displayed is the clear history dialog.
+         If selected all the history is deleted from the history storage. -->
+    <string name="history_clear_range_everything">Everything</string>
+
+    <!-- This string is displayed in the header of the radio button where the clear cache time range
+         can be selected. -->
+    <string name="history_clear_time_range">Time range to clear:</string>
+
+    <!-- This string is displayed is the history context menu that is displayed when
+         the more button is pressed in a history item. It opens the selected history item in a new window. -->
+    <string name="history_context_menu_new_window">Open in a New Window</string>
+
+    <!-- This string is displayed is the history context menu that is displayed when
+         the more button is pressed in a history item. It opens the selected history item in a new tab. -->
+    <string name="history_context_menu_new_tab">Open in a New Tab</string>
+
+    <!-- This string is displayed is the history context menu that is displayed when
+         the more button is pressed in a history item. It add the selected items to favorites. -->
+    <string name="history_context_add_bookmarks">Add to Bookmarks</string>
+
+    <!-- This string is displayed is the history context menu that is displayed when
+         the more button is pressed in a history item. It removes the selected item from favorites. -->
+    <string name="history_context_remove_bookmarks">Remove from Bookmarks</string>
+
+    <!-- This string labels the Reset button that restores the default display settings values. -->
+    <string name="display_options_reset">Reset Display Settings</string>
+
+    <!-- This string labels the Reset button that restores the default privacy and security settings values. -->
+    <string name="privacy_options_reset">Reset Privacy &amp; Security Settings</string>
+
+    <!-- This string labels the Clear All button that removes all the sites from the stored allowed pop-ups sites. -->
+    <string name="privacy_options_popups_clear_all">Clear All</string>
+
+    <!-- This string labels the Reset button that removes all the sites from the stored allowed pop-ups sites. -->
+    <string name="privacy_options_popups_reset">Reset Block Pop-Ups Windows Settings</string>
+
+    <!-- This string is displayed on top of the allowed sites list in the allowed pop-ups panel. -->
+    <string name="privacy_options_popups_list_header">The following web sites have requested to open pop-up windows:</string>
+
+    <!-- This string is displayed in the first line of a text that's displayed in the middle of allowed pop-ups panel instead of the exceptions list
+         when there are no exceptions. -->
+    <string name="privacy_options_popups_list_empty_first">When you open a web site with pop-up windows, you will see a dialogue that lets you choose to block pop-up windows.</string>
+
+    <!-- This string is displayed in the second line of a text that's displayed in the middle of allowed pop-ups panel instead of the exceptions list
+         when there are no exceptions. -->
+    <string name="privacy_options_popups_list_empty_second">A list of sites with permissions will appear here.</string>
+
+
     </resources>
