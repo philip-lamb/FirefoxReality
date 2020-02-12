@@ -38,6 +38,8 @@ static const vrb::Vector kAverageHeight(0.0f, 1.7f, 0.0f);
 static const int32_t kMaxControllerCount = 2;
 static const int32_t kRecenterDelay = 72;
 
+enum class ARScalingMode {SCALE_MODE_STRETCH, SCALE_MODE_FIT, SCALE_MODE_FILL, SCALE_MODE_1TO1};
+
 struct DeviceDelegateWaveVR::State {
   struct Controller {
     int32_t index;
@@ -107,6 +109,8 @@ struct DeviceDelegateWaveVR::State {
   bool arVideoIsStereo;
   ARParam arCparamL;
   ARParam arCparamR;
+  ARScalingMode arScalingMode;
+  int32_t arViewport[4];
   ARGL_CONTEXT_SETTINGS_REF arglContextSettingsL;
   ARGL_CONTEXT_SETTINGS_REF arglContextSettingsR;
   State()
@@ -135,6 +139,8 @@ struct DeviceDelegateWaveVR::State {
       , arVideoWidthPadded(0)
       , arVideoPixelFormat(AR_PIXEL_FORMAT_INVALID)
       , arVideoIsStereo(false)
+      , arScalingMode(ARScalingMode::SCALE_MODE_FIT)
+      , arViewport{0}
       , arglContextSettingsL(nullptr)
       , arglContextSettingsR(nullptr)
   {
@@ -437,6 +443,40 @@ struct DeviceDelegateWaveVR::State {
       controller.remainingVibrateTime = 0.0f;
     }
   }
+
+  void UpdateARViewport(void) {
+    if (arVideoWidth == 0 || arVideoHeight == 0) return;
+    // Calculate viewPort.
+    int32_t left, bottom, w, h;
+    if (arScalingMode == ARScalingMode::SCALE_MODE_STRETCH) {
+      w = renderWidth;
+      h = renderHeight;
+    } else {
+      if (arScalingMode == ARScalingMode::SCALE_MODE_FIT || arScalingMode == ARScalingMode::SCALE_MODE_FILL) {
+        float scaleRatioWidth, scaleRatioHeight, scaleRatio;
+        scaleRatioWidth = (float)renderWidth / (float)arVideoWidth;
+        scaleRatioHeight = (float)renderHeight / (float)arVideoHeight;
+        if (arScalingMode == ARScalingMode::SCALE_MODE_FILL) scaleRatio = (std::max)(scaleRatioHeight, scaleRatioWidth);
+        else scaleRatio = (std::min)(scaleRatioHeight, scaleRatioWidth);
+        w = (int32_t)((float)arVideoWidth * scaleRatio);
+        h = (int32_t)((float)arVideoHeight * scaleRatio);
+      } else {
+        w = arVideoWidth;
+        h = arVideoHeight;
+      }
+    }
+    /*if (hAlign == HorizontalAlignment::H_ALIGN_LEFT) left = 0;
+    else if (hAlign == HorizontalAlignment::H_ALIGN_RIGHT) left = (int32_t)renderWidth - w;
+    else*/ left = ((int32_t)renderWidth - w) / 2;
+    /*if (vAlign == VerticalAlignment::V_ALIGN_BOTTOM) bottom = 0;
+    else if (vAlign == VerticalAlignment::V_ALIGN_TOP) bottom = (int32_t)renderHeight - h;
+    else*/ bottom = ((int32_t)renderHeight - h) / 2;
+    ARLOGd("Calculated viewport {%d, %d, %d, %d}\n", left, bottom, w, h);
+    arViewport[0] = left;
+    arViewport[1] = bottom;
+    arViewport[2] = w;
+    arViewport[3] = h;
+  }
 };
 
 DeviceDelegateWaveVRPtr
@@ -466,6 +506,7 @@ DeviceDelegateWaveVR::SetRenderMode(const device::RenderMode aMode) {
     m.renderWidth = recommendedWidth;
     m.renderHeight = recommendedHeight;
     m.InitializeTextureQueues();
+    m.UpdateARViewport();
   }
 }
 
@@ -513,6 +554,7 @@ DeviceDelegateWaveVR::SetImmersiveSize(const uint32_t aEyeWidth, const uint32_t 
     m.renderWidth = targetWidth;
     m.renderHeight = targetHeight;
     m.InitializeTextureQueues();
+    m.UpdateARViewport();
   }
 }
 
@@ -923,6 +965,7 @@ DeviceDelegateWaveVR::StartPassthroughVideo() {
              m.arCparamR.mat[j][3]);
   }
 
+  m.UpdateARViewport();
 }
 
 void
@@ -938,12 +981,6 @@ void
 DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
   if (!m.arVideo) return;
 
-  int32_t viewport[4];
-  viewport[0] = 0;
-  viewport[1] = 0;
-  viewport[2] = m.renderWidth;
-  viewport[3] = m.renderHeight;
-
   if (aWhich == device::Eye::Left || (!m.arVideoIsStereo && aWhich == device::Eye::Right)) {
     glStateCacheFlush();
     if (!m.arglContextSettingsL) {
@@ -956,7 +993,8 @@ DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
     if (image && image->fillFlag) {
       arglPixelBufferDataUpload(m.arglContextSettingsL, image->buff);
     }
-    arglDispImage(m.arglContextSettingsL, viewport);
+    arglDispImage(m.arglContextSettingsL, m.arViewport);
+    glViewport(0, 0, m.renderWidth, m.renderHeight); // Restore viewport.
 
   } else if (aWhich == device::Eye::Right) {
     glStateCacheFlush();
@@ -970,7 +1008,8 @@ DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
     if (image && image->fillFlag) {
       arglPixelBufferDataUpload(m.arglContextSettingsR, image->buff);
     }
-    arglDispImage(m.arglContextSettingsR, viewport);
+    arglDispImage(m.arglContextSettingsR, m.arViewport);
+    glViewport(0, 0, m.renderWidth, m.renderHeight); // Restore viewport.
 
   }
 
