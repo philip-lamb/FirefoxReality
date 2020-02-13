@@ -977,6 +977,7 @@ DeviceDelegateWaveVR::StopPassthroughVideo() {
   ARLOGi("Stopped passthrough video.\n");
 }
 
+// Must be called from render thread.
 void
 DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
   if (!m.arVideo) return;
@@ -1015,6 +1016,17 @@ DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
 
 }
 
+// Must be called from render thread.
+void
+DeviceDelegateWaveVR::CleanupPassthroughVideo() {
+  arglCleanup(m.arglContextSettingsL);
+  m.arglContextSettingsL = nullptr;
+  if (m.arVideoIsStereo) {
+    arglCleanup(m.arglContextSettingsR);
+    m.arglContextSettingsR = nullptr;
+  }
+
+}
 bool
 DeviceDelegateWaveVR::IsRunning() {
   return m.isRunning;

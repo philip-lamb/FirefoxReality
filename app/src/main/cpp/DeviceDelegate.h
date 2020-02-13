@@ -79,6 +79,7 @@ public:
   virtual void StartPassthroughVideo() {};
   virtual void StopPassthroughVideo() {};
   virtual void DrawPassthroughVideo(const device::Eye aWhich) {};
+  virtual void CleanupPassthroughVideo() {};
 protected:
   DeviceDelegate() {}
 

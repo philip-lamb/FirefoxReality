@@ -189,11 +189,11 @@ struct BrowserWorld::State {
   std::function<void(device::Eye)> drawHandler;
   std::function<void()> frameEndHandler;
   bool videoPassThrough;
-  bool videoPassThroughUpdateRequiredOnRenderThread;
+  bool videoPassThroughChangedState;
 
   State() : paused(true), glInitialized(false), modelsLoaded(false), env(nullptr), cylinderDensity(0.0f), nearClip(0.1f),
             farClip(300.0f), activity(nullptr), windowsInitialized(false), exitImmersiveRequested(false), loaderDelay(0),
-            videoPassThrough(false), videoPassThroughUpdateRequiredOnRenderThread(false) {
+            videoPassThrough(false), videoPassThroughChangedState(false) {
     context = RenderContext::Create();
     create = context->GetRenderThreadCreationContext();
     loader = ModelLoaderAndroid::Create(context);
@@ -883,13 +883,14 @@ BrowserWorld::StartFrame() {
       m.loader->InitializeGL();
     }
   }
-  if (m.videoPassThroughUpdateRequiredOnRenderThread) {
+  if (m.videoPassThroughChangedState) {
     if (m.videoPassThrough) {
-        CreateSkyBox("cubemap/void", ""); // Disable Skybox.
+      CreateSkyBox("cubemap/void", ""); // Disable Skybox.
     } else {
-        UpdateEnvironment(); // Enable Skybox.
+      m.device->CleanupPassthroughVideo();
+      UpdateEnvironment(); // Enable Skybox.
     }
-    m.videoPassThroughUpdateRequiredOnRenderThread = false;
+    m.videoPassThroughChangedState = false;
   }
 
   m.device->ProcessEvents();
@@ -1353,11 +1354,11 @@ void BrowserWorld::SetEnvironmentPassthrough(const bool aEnabled) {
   if (aEnabled) {
     m.device->StartPassthroughVideo();
     m.videoPassThrough = true;
-    m.videoPassThroughUpdateRequiredOnRenderThread = true;
+    m.videoPassThroughChangedState = true;
   } else {
     m.device->StopPassthroughVideo();
     m.videoPassThrough = false;
-    m.videoPassThroughUpdateRequiredOnRenderThread = true;
+    m.videoPassThroughChangedState = true;
   }
 }
 
