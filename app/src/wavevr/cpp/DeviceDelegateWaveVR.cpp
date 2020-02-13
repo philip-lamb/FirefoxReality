@@ -109,6 +109,7 @@ struct DeviceDelegateWaveVR::State {
   bool arVideoIsStereo;
   ARParam arCparamL;
   ARParam arCparamR;
+  AR2VideoBufferT *arVideoImage;
   ARScalingMode arScalingMode;
   int32_t arViewport[4];
   ARGL_CONTEXT_SETTINGS_REF arglContextSettingsL;
@@ -139,6 +140,7 @@ struct DeviceDelegateWaveVR::State {
       , arVideoWidthPadded(0)
       , arVideoPixelFormat(AR_PIXEL_FORMAT_INVALID)
       , arVideoIsStereo(false)
+      , arVideoImage(nullptr)
       , arScalingMode(ARScalingMode::SCALE_MODE_FIT)
       , arViewport{0}
       , arglContextSettingsL(nullptr)
@@ -973,6 +975,7 @@ DeviceDelegateWaveVR::StopPassthroughVideo() {
   if (!m.arVideo) return;
   ar2VideoCapStop(m.arVideo);
   ar2VideoClose(m.arVideo);
+  m.arVideoImage = nullptr;
   m.arVideo = nullptr;
   ARLOGi("Stopped passthrough video.\n");
 }
@@ -989,10 +992,13 @@ DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
       arglPixelBufferSizeSet(m.arglContextSettingsL, m.arVideoWidthPadded, m.arVideoHeight);
     }
 
-    ar2VideoSetParami(m.arVideo, AR_VIDEO_PARAM_STEREO_NEXTEYE, 0);
-    AR2VideoBufferT *image = ar2VideoGetImage(m.arVideo);
-    if (image && image->fillFlag) {
-      arglPixelBufferDataUpload(m.arglContextSettingsL, image->buff);
+    // Since one call gets both images, we assume that left eye draw call occurs first,
+    // and so only retrieve a new image during the left-eye pass.
+    m.arVideoImage = ar2VideoGetImage(m.arVideo);
+
+    if (m.arVideoImage && m.arVideoImage->fillFlag) {
+      arglPixelBufferDataUploadBiPlanar(m.arglContextSettingsL, m.arVideoImage->buff,
+                                        (m.arVideoPixelFormat == AR_PIXEL_FORMAT_NV21 ? m.arVideoImage->bufPlanes[1] : nullptr));
     }
     arglDispImage(m.arglContextSettingsL, m.arViewport);
     glViewport(0, 0, m.renderWidth, m.renderHeight); // Restore viewport.
@@ -1004,10 +1010,9 @@ DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
       arglPixelBufferSizeSet(m.arglContextSettingsR, m.arVideoWidthPadded, m.arVideoHeight);
     }
 
-    ar2VideoSetParami(m.arVideo, AR_VIDEO_PARAM_STEREO_NEXTEYE, 1);
-    AR2VideoBufferT *image = ar2VideoGetImage(m.arVideo);
-    if (image && image->fillFlag) {
-      arglPixelBufferDataUpload(m.arglContextSettingsR, image->buff);
+    if (m.arVideoImage && m.arVideoImage->fillFlag) {
+      arglPixelBufferDataUploadBiPlanar(m.arglContextSettingsR, m.arVideoImage->buff + m.arVideoWidth,
+                                        (m.arVideoPixelFormat == AR_PIXEL_FORMAT_NV21 ? m.arVideoImage->bufPlanes[1] + m.arVideoWidth : nullptr)); // Pointer math: plane is half-width, but 2-bytes per pixel.
     }
     arglDispImage(m.arglContextSettingsR, m.arViewport);
     glViewport(0, 0, m.renderWidth, m.renderHeight); // Restore viewport.
