@@ -58,6 +58,7 @@ import org.mozilla.vrbrowser.search.SearchEngineWrapper;
 import org.mozilla.vrbrowser.telemetry.GleanMetricsService;
 import org.mozilla.vrbrowser.telemetry.TelemetryWrapper;
 import org.mozilla.vrbrowser.ui.OffscreenDisplay;
+import org.mozilla.vrbrowser.ui.adapters.Language;
 import org.mozilla.vrbrowser.ui.widgets.KeyboardWidget;
 import org.mozilla.vrbrowser.ui.widgets.NavigationBarWidget;
 import org.mozilla.vrbrowser.ui.widgets.RootWidget;
@@ -87,7 +88,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -211,11 +211,13 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
     @Override
     protected void attachBaseContext(Context base) {
-        super.attachBaseContext(LocaleUtils.setLocale(base));
+        Context newContext = LocaleUtils.init(base);
+        super.attachBaseContext(newContext);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ((VRBrowserApplication)getApplication()).onActivityCreate();
         SettingsStore.getInstance(getBaseContext()).setPid(Process.myPid());
         // Fix for infinite restart on startup crashes.
         long count = SettingsStore.getInstance(getBaseContext()).getCrashRestartCount();
@@ -231,8 +233,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         // Set a global exception handler as soon as possible
         GlobalExceptionHandler.register(this.getApplicationContext());
 
-        LocaleUtils.init();
-
         if (DeviceType.isOculusBuild()) {
             workaroundGeckoSigAction();
         }
@@ -244,7 +244,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         SessionStore.get().setContext(this, extras);
         SessionStore.get().initializeServices();
         SessionStore.get().initializeStores(this);
-        SessionStore.get().setLocales(LocaleUtils.getPreferredLocales(this));
+        SessionStore.get().setLocales(LocaleUtils.getPreferredLanguageTags(this));
 
         // Create broadcast receiver for getting crash messages from crash process
         IntentFilter intentFilter = new IntentFilter();
@@ -284,7 +284,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         });
         final String tempPath = getCacheDir().getAbsolutePath();
         queueRunnable(() -> setTemporaryFilePath(tempPath));
-        updateFoveatedLevel();
 
         initializeWidgets();
 
@@ -294,7 +293,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         mSearchEngineWrapper = SearchEngineWrapper.get(this);
         mSearchEngineWrapper.registerForUpdates();
 
-        GeolocationWrapper.update(this);
+        GeolocationWrapper.INSTANCE.update(this);
 
         mConnectivityReceiver = new ConnectivityReceiver();
         mPoorPerformanceWhiteList = new HashSet<>();
@@ -306,6 +305,22 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     protected void initializeWidgets() {
         UISurfaceTextureRenderer.setUseHardwareAcceleration(SettingsStore.getInstance(getBaseContext()).isUIHardwareAccelerationEnabled());
         UISurfaceTextureRenderer.setRenderActive(true);
+
+        // Empty widget just for handling focus on empty space
+        mRootWidget = new RootWidget(this);
+        mRootWidget.setClickCallback(() -> {
+            for (WorldClickListener listener: mWorldClickListeners) {
+                listener.onWorldClick();
+            }
+        });
+
+        // Create Browser navigation widget
+        mNavigationBar = new NavigationBarWidget(this);
+
+        // Create keyboard widget
+        mKeyboard = new KeyboardWidget(this);
+
+        // Windows
         mWindows = new Windows(this);
         mWindows.setDelegate(new Windows.Delegate() {
             @Override
@@ -341,24 +356,8 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
             }
         });
 
-        // Create Browser navigation widget
-        mNavigationBar = new NavigationBarWidget(this);
-
-        // Create keyboard widget
-        mKeyboard = new KeyboardWidget(this);
-
         // Create the tray
         mTray = new TrayWidget(this);
-
-        // Empty widget just for handling focus on empty space
-        mRootWidget = new RootWidget(this);
-        mRootWidget.setClickCallback(() -> {
-            for (WorldClickListener listener: mWorldClickListeners) {
-                listener.onWorldClick();
-            }
-        });
-
-        // Add widget listeners
         mTray.addListeners(mWindows);
         mTray.setAddWindowVisible(mWindows.canOpenNewWindow());
         mTray.addListeners(this);
@@ -394,7 +393,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         SettingsStore.getInstance(getBaseContext()).setPid(Process.myPid());
         super.onStart();
         TelemetryWrapper.start();
-        UISurfaceTextureRenderer.setRenderActive(true);
         mLifeCycle.setCurrentState(Lifecycle.State.STARTED);
     }
 
@@ -405,7 +403,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
         TelemetryWrapper.stop();
         GleanMetricsService.sessionStop();
-        UISurfaceTextureRenderer.setRenderActive(false);
     }
 
     @Override
@@ -431,10 +428,12 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         }
         mWidgetContainer.getViewTreeObserver().removeOnGlobalFocusChangeListener(globalFocusListener);
         super.onPause();
+        UISurfaceTextureRenderer.setRenderActive(false);
     }
 
     @Override
     protected void onResume() {
+        UISurfaceTextureRenderer.setRenderActive(true);
         MotionEventGenerator.clearDevices();
         mWidgetContainer.getViewTreeObserver().addOnGlobalFocusChangeListener(globalFocusListener);
         if (mOffscreenDisplay != null) {
@@ -514,12 +513,14 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
+        Language language = LocaleUtils.getDisplayLanguage(this);
+        newConfig.setLocale(language.getLocale());
         getBaseContext().getResources().updateConfiguration(newConfig, getBaseContext().getResources().getDisplayMetrics());
 
-        LocaleUtils.refresh();
-        mWidgets.forEach((i, widget) -> widget.onConfigurationChanged(newConfig));
+        LocaleUtils.update(this, language);
 
         SessionStore.get().onConfigurationChanged(newConfig);
+        mWidgets.forEach((i, widget) -> widget.onConfigurationChanged(newConfig));
 
         super.onConfigurationChanged(newConfig);
     }
@@ -546,16 +547,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
             if (extras.containsKey("homepage")) {
                 Uri homepageUri = Uri.parse(extras.getString("homepage"));
                 SettingsStore.getInstance(this).setHomepage(homepageUri.toString());
-            }
-
-            // Enable/Disable e10s
-            if (extras.containsKey("e10s")) {
-                boolean wasEnabled = SettingsStore.getInstance(this).isMultiprocessEnabled();
-                boolean enabled = extras.getBoolean("e10s", wasEnabled);
-                if (wasEnabled != enabled) {
-                    SettingsStore.getInstance(this).setMultiprocessEnabled(enabled);
-                    SessionStore.get().resetMultiprocess();
-                }
             }
 
             // Open the provided URL in a new tab, if there is no URL provided we just open the homepage
@@ -722,18 +713,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
             }
             return result || super.dispatchKeyEvent(event);
 
-        } else if (DeviceType.isGoogleVR()) {
-            boolean result;
-            switch (keyCode) {
-                case KeyEvent.KEYCODE_VOLUME_UP:
-                case KeyEvent.KEYCODE_VOLUME_DOWN:
-                    result = true;
-                    break;
-                default:
-                    result = super.dispatchKeyEvent(event);
-                    break;
-            }
-            return result;
         }
         return super.dispatchKeyEvent(event);
     }
@@ -822,7 +801,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
     @Keep
     @SuppressWarnings("unused")
-    void handleMotionEvent(final int aHandle, final int aDevice, final boolean aPressed, final float aX, final float aY) {
+    void handleMotionEvent(final int aHandle, final int aDevice, final boolean aFocused, final boolean aPressed, final float aX, final float aY) {
         runOnUiThread(() -> {
             Widget widget = mWidgets.get(aHandle);
             if (!isWidgetInputEnabled(widget)) {
@@ -834,12 +813,14 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
             final float y = aY / scale;
 
             if (widget == null) {
-                MotionEventGenerator.dispatch(mRootWidget, aDevice, aPressed, x, y);
+                MotionEventGenerator.dispatch(mRootWidget, aDevice, aFocused, aPressed, x, y);
+
             } else if (widget.getBorderWidth() > 0) {
                 final int border = widget.getBorderWidth();
-                MotionEventGenerator.dispatch(widget, aDevice, aPressed, x - border, y - border);
+                MotionEventGenerator.dispatch(widget, aDevice, aFocused, aPressed, x - border, y - border);
+
             } else {
-                MotionEventGenerator.dispatch(widget, aDevice, aPressed, x, y);
+                MotionEventGenerator.dispatch(widget, aDevice, aFocused, aPressed, x, y);
             }
         });
     }
@@ -854,7 +835,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
             }
             if (widget != null) {
                 float scrollDirection = mSettings.getScrollDirection() == 0 ? 1.0f : -1.0f;
-                MotionEventGenerator.dispatchScroll(widget, aDevice, aX * scrollDirection, aY * scrollDirection);
+                MotionEventGenerator.dispatchScroll(widget, aDevice, true,aX * scrollDirection, aY * scrollDirection);
             } else {
                 Log.e(LOGTAG, "Failed to find widget for scroll event: " + aHandle);
             }
@@ -1423,13 +1404,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     }
 
     @Override
-    public void setTrayVisible(boolean visible) {
-        if (mTray != null && !mTray.isReleased()) {
-            mTray.setTrayVisible(visible);
-        }
-    }
-
-    @Override
     public void setControllersVisible(final boolean aVisible) {
         queueRunnable(() -> setControllersVisibleNative(aVisible));
     }
@@ -1447,12 +1421,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     @Override
     public void updateEnvironment() {
         queueRunnable(() -> updateEnvironmentNative());
-    }
-
-    @Override
-    public void updateFoveatedLevel() {
-        final int appLevel = SettingsStore.getInstance(this).getFoveatedLevelApp();
-        queueRunnable(() -> updateFoveatedLevelNative(appLevel));
     }
 
     @Override
@@ -1568,9 +1536,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
     @Override
     public void updateLocale(@NonNull Context context) {
-        Configuration configuration = context.getResources().getConfiguration();
-        configuration.setLocale(Locale.forLanguageTag(LocaleUtils.getDisplayLanguage(this).getId()));
-        onConfigurationChanged(new Configuration(context.getResources().getConfiguration()));
+        onConfigurationChanged(context.getResources().getConfiguration());
     }
 
     private native void addWidgetNative(int aHandle, WidgetPlacement aPlacement);
@@ -1596,6 +1562,5 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     private native void setCPULevelNative(@CPULevelFlags int aCPULevel);
     private native void setIsServo(boolean aIsServo);
     private native void setEnvironmentPassthroughNative(boolean aEnabled);
-    private native void updateFoveatedLevelNative(int appLevel);
 
 }

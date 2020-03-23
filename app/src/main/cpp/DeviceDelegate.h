@@ -58,7 +58,6 @@ public:
   virtual void SetClearColor(const vrb::Color& aColor) = 0;
   virtual void SetClipPlanes(const float aNear, const float aFar) = 0;
   virtual void SetControllerDelegate(ControllerDelegatePtr& aController) = 0;
-  virtual void SetFoveatedLevel(const int32_t aAppLevel) {};
   virtual void ReleaseControllerDelegate() = 0;
   virtual int32_t GetControllerModelCount() const = 0;
   virtual const std::string GetControllerModelName(const int32_t aModelIndex) const = 0;
@@ -67,6 +66,8 @@ public:
   virtual void StartFrame() = 0;
   virtual void BindEye(const device::Eye aWhich) = 0;
   virtual void EndFrame(bool aDiscard = false) = 0;
+  virtual bool IsInGazeMode() const { return false; };
+  virtual int32_t GazeModeIndex() const { return -1; };
   virtual VRLayerQuadPtr CreateLayerQuad(int32_t aWidth, int32_t aHeight,
                                          VRLayerSurface::SurfaceType aSurfaceType) { return nullptr; }
   virtual VRLayerQuadPtr CreateLayerQuad(const VRLayerSurfacePtr& aMoveLayer) { return nullptr; }

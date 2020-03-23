@@ -49,7 +49,7 @@ android {
         minSdkVersion build_versions.min_sdk
         targetSdkVersion build_versions.target_sdk
         versionCode 1
-        versionName "9"
+        versionName "10"
         buildConfigField "String", "GIT_HASH", "\"${getGitHash()}\""
         buildConfigField "Boolean", "DISABLE_CRASH_RESTART", getCrashRestartDisabled()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -110,25 +110,10 @@ android {
         disable "ExtraTranslation"
     }
 
-    packagingOptions {
-        pickFirst '/lib/*/libgvr.so'
-    }
-
     flavorDimensions "platform", "abi"
 
     productFlavors {
         // Supported platforms
-        googlevr {
-            dimension "platform"
-            externalNativeBuild {
-                cmake {
-                    cppFlags " -I" + file("${project.rootDir}/gvr-android-sdk/libraries/headers").absolutePath +
-                            " -DVRBROWSER_GOOGLEVR"
-                    arguments "-DVR_SDK_LIB=googlevr-lib", "-DGOOGLEVR=ON"
-                }
-            }
-        }
-
         oculusvr {
             dimension "platform"
             externalNativeBuild {
@@ -169,18 +154,6 @@ android {
                 }
             }
             manifestPlaceholders = [ headtrackingRequired:"false", permissionToRemove:"android.permission.CAMERA" ]
-        }
-
-        svr {
-            dimension "platform"
-            externalNativeBuild {
-                cmake {
-                    cppFlags " -I" + file("${project.rootDir}/third_party/svr/public").absolutePath +
-                            " -I" + file("${project.rootDir}/app/src/svr/cpp").absolutePath +
-                            " -DSNAPDRAGONVR"
-                    arguments "-DVR_SDK_LIB=svr-lib", "-DSNAPDRAGONVR=ON"
-                }
-            }
         }
 
         wavevr {
@@ -229,13 +202,6 @@ android {
         }
 
         // Supported ABIs
-        arm {
-            dimension "abi"
-            ndk {
-                abiFilters "armeabi-v7a"
-            }
-        }
-
         arm64 {
             dimension "abi"
             ndk {
@@ -253,38 +219,18 @@ android {
 
     variantFilter { variant ->
         def needed = variant.name in [
-                'googlevrArmDebug',
-                'googlevrArmRelease',
-                'googlevrArm64Debug',
-                'googlevrArm64Release',
-                'oculusvrArmDebug',
-                'oculusvrArmRelease',
                 'oculusvrArm64Debug',
                 'oculusvrArm64Release',
-                'oculusvrStoreArmDebug',
-                'oculusvrStoreArmRelease',
                 'oculusvrStoreArm64Debug',
                 'oculusvrStoreArm64Release',
-                'oculusvr3dofStoreArmDebug',
-                'oculusvr3dofStoreArmRelease',
                 'oculusvr3dofStoreArm64Debug',
                 'oculusvr3dofStoreArm64Release',
-                'svrArmDebug',
-                'svrArmRelease',
-                'svrArm64Debug',
-                'svrArm64Release',
                 'picovrArm64Debug',
                 'picovrArm64Release',
-                'wavevrArmDebug',
-                'wavevrArmRelease',
                 'wavevrArm64Debug',
                 'wavevrArm64Release',
-                'wavevrStoreArmDebug',
-                'wavevrStoreArmRelease',
                 'wavevrStoreArm64Debug',
                 'wavevrStoreArm64Release',
-                'noapiArmDebug',
-                'noapiArmRelease',
                 'noapiArm64Debug',
                 'noapiArm64Release',
                 'noapiX86_64Debug',
@@ -307,12 +253,6 @@ android {
             manifest.srcFile getUseDebugSigningOnRelease() ? "src/debug/AndroidManifest.xml"
                                                            : manifest.srcFile
 
-        }
-
-        googlevr {
-            java.srcDirs = [
-                    'src/googlevr/java'
-            ]
         }
 
         oculusvr {
@@ -339,11 +279,6 @@ android {
             ]
         }
 
-        oculusvrArmRelease {
-            manifest.srcFile getUseDebugSigningOnRelease() ? "src/oculusvrArmDebug/AndroidManifest.xml"
-                                                           :  manifest.srcFile
-        }
-
         oculusvrArm64Debug {
             manifest.srcFile "src/oculusvrArmDebug/AndroidManifest.xml"
         }
@@ -353,17 +288,8 @@ android {
                                                            : "src/oculusvrArmRelease/AndroidManifest.xml"
         }
 
-        oculusvrStoreArmDebug {
-            manifest.srcFile "src/oculusvrArmDebug/AndroidManifest.xml"
-        }
-
         oculusvrStoreArm64Debug {
             manifest.srcFile "src/oculusvrArmDebug/AndroidManifest.xml"
-        }
-
-        oculusvrStoreArmRelease {
-            manifest.srcFile getUseDebugSigningOnRelease() ? "src/oculusvrArmDebug/AndroidManifest.xml"
-                    : "src/oculusvrArmRelease/AndroidManifest.xml"
         }
 
         oculusvrStoreArm64Release {
@@ -371,29 +297,13 @@ android {
                     : "src/oculusvrArmRelease/AndroidManifest.xml"
         }
 
-        oculusvr3dofStoreArmDebug {
-            manifest.srcFile "src/oculusvrArmDebug/AndroidManifest.xml"
-        }
-
         oculusvr3dofStoreArm64Debug {
             manifest.srcFile "src/oculusvrArmDebug/AndroidManifest.xml"
-        }
-
-        oculusvr3dofStoreArmRelease {
-            manifest.srcFile getUseDebugSigningOnRelease() ? "src/oculusvrArmDebug/AndroidManifest.xml"
-                    : "src/oculusvrArmRelease/AndroidManifest.xml"
         }
 
         oculusvr3dofStoreArm64Release {
             manifest.srcFile getUseDebugSigningOnRelease() ? "src/oculusvrArmDebug/AndroidManifest.xml"
                     : "src/oculusvrArmRelease/AndroidManifest.xml"
-        }
-
-        svr {
-            java.srcDirs = [
-                    'src/svr/java'
-            ]
-            jniLibs.srcDirs = ["${project.rootDir}/third_party/svr/libs"]
         }
 
         wavevr {
@@ -456,9 +366,8 @@ dependencies {
     implementation deps.openwnn
 
     // Common
-    // implementation deps.google_vr.sdk_audio
     implementation deps.lifecycle.runtime
-    implementation deps.lifecycle.extensions
+    implementation deps.lifecycle.viewmodel
     implementation deps.support.cardview
     //implementation deps.support.app_compat
     implementation(name:'appcompat', ext:'aar')
@@ -477,6 +386,7 @@ dependencies {
     implementation deps.android_components.browser_storage
     implementation deps.android_components.browser_domains
     implementation deps.android_components.service_accounts
+    implementation deps.android_components.mozilla_service_location
     implementation deps.android_components.ui_autocomplete
     implementation deps.android_components.concept_fetch
     implementation deps.android_components.lib_fetch
@@ -484,18 +394,6 @@ dependencies {
     implementation deps.android_components.support_rusthttp
     implementation deps.android_components.glean
     implementation deps.app_services.rustlog
-
-    // For production builds, the native code for all `org.mozilla.appservices`
-    // dependencies gets compiled together into a single "megazord" build, and
-    // different megazords are published for different subsets of features. Ref
-    // https://mozilla.github.io/application-services/docs/applications/consuming-megazord-libraries.html
-    // For now we can jut use the one that's specifically designed for Fenix.
-    implementation deps.app_services.megazord
-    modules {
-        module('org.mozilla.appservices:full-megazord') {
-            replacedBy('org.mozilla.appservices:fenix-megazord', 'prefer the fenix megazord, to reduce final application size')
-        }
-    }
 
     // TODO this should not be necessary at all, see Services.kt
     implementation deps.work.runtime
@@ -520,17 +418,11 @@ dependencies {
     testImplementation deps.junit
     testImplementation deps.atsl.core
     testImplementation deps.robolectric
-    testImplementation deps.app_services.megazord_forUnitTests
     testImplementation deps.app_services.rustlog
     testImplementation deps.android_components.support_test
+    testImplementation deps.android_components.support_test_appservices
     testImplementation deps.telemetry.glean_unittests
     testImplementation deps.work.testing
-
-    // Daydream
-    googlevrImplementation deps.google_vr.sdk_base
-
-    // ODG
-    svrImplementation fileTree(dir: "${project.rootDir}/third_party/svr/", include: ['*.jar'])
 
     // Pico
     picovrImplementation fileTree(dir: "${project.rootDir}/third_party/picovr/", include: ['*.jar'])
@@ -539,7 +431,6 @@ dependencies {
 if (findProject(':servo')) {
     dependencies {
       oculusvrImplementation project(':servo')
-      googlevrImplementation project(':servo')
     }
 }
 
@@ -571,38 +462,31 @@ if (gradle.hasProperty('localProperties.dependencySubstitutions.geckoviewTopsrcd
 }
 
 // -------------------------------------------------------------------------------------------------
+// MLS: Read token from local file if it exists
+// -------------------------------------------------------------------------------------------------
+
+android.applicationVariants.all { variant ->
+    print("MLS token: ")
+
+    try {
+        def token = new File("${rootDir}/.mls_token").text.trim()
+        buildConfigField 'String', 'MLS_TOKEN', '"' + token + '"'
+        println "(Added from .mls_token file)"
+    } catch (FileNotFoundException ignored) {
+        buildConfigField 'String', 'MLS_TOKEN', '""'
+        println("X_X")
+    }
+
+}
+
+// -------------------------------------------------------------------------------------------------
 //  Dynamically set versionCode (See tools/build/versionCode.gradle
 // -------------------------------------------------------------------------------------------------
 
 android.applicationVariants.all { variant ->
-    def buildType = variant.buildType.name
     if (gradle.hasProperty('userProperties.taskclusterBuild')) {
-        def versionCode = generatedVersionCode
-
-        // The Google Play Store does not allow multiple APKs for the same app that all have the
-        // same version code. Therefore we need to have different version codes for our ARM and x86
-        // builds.
-        // Our generated version code has a length of 8 (See tools/gradle/versionCode.gradle).
-        // We will prefix our ARM builds with 1 and our x86 builds with 2. Our x86 builds need a
-        // higher version code to avoid installing ARM builds on an x86 device with ARM
-        // compatibility mode.
-        def multiplier = 100000000
-
-        if (variant.flavorName.contains("x86_64")) {
-            versionCode = versionCode + (3 * multiplier)
-        } else if (variant.flavorName.contains("Aarch64")) {
-            versionCode = versionCode + (2 * multiplier)
-        } else if (variant.flavorName.contains("Arm")) {
-            versionCode = versionCode + (1 * multiplier)
-        }
-
         variant.outputs.each { output ->
-            output.versionCodeOverride = versionCode
+            output.versionCodeOverride = generatedVersionCode
         }
     }
-
-    println("----------------------------------------------")
-    println("Build type:   " + buildType)
-    println("Flavor:       " + variant.flavorName)
-    println("Version code: " + variant.mergedFlavor.versionCode)
 }

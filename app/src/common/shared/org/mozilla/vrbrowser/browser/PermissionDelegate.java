@@ -14,6 +14,7 @@ import org.mozilla.vrbrowser.R;
 import org.mozilla.vrbrowser.browser.engine.SessionStore;
 import org.mozilla.vrbrowser.ui.widgets.WidgetManagerDelegate;
 import org.mozilla.vrbrowser.ui.widgets.dialogs.PermissionWidget;
+import org.mozilla.vrbrowser.utils.DeviceType;
 import org.mozilla.vrbrowser.utils.SystemUtils;
 
 import java.util.ArrayList;
@@ -133,6 +134,9 @@ public class PermissionDelegate implements GeckoSession.PermissionDelegate, Widg
             type = PermissionWidget.PermissionType.Notification;
         } else if (aType == PERMISSION_GEOLOCATION) {
             type = PermissionWidget.PermissionType.Location;
+        } else if (aType == PERMISSION_MEDIA_KEY_SYSTEM_ACCESS) {
+            callback.grant();
+            return;
         } else {
             Log.e(LOGTAG, "onContentPermissionRequest unknown permission: " + aType);
             callback.reject();
@@ -171,6 +175,13 @@ public class PermissionDelegate implements GeckoSession.PermissionDelegate, Widg
                 aMediaCallback.reject();
             }
         };
+
+        // Temporary fix for https://bugzilla.mozilla.org/show_bug.cgi?id=1621380
+        if ((type == PermissionWidget.PermissionType.Camera ||
+                type == PermissionWidget.PermissionType.CameraAndMicrophone)) {
+            callback.reject();
+            return;
+        }
 
         handlePermission(aUri, type, callback);
     }

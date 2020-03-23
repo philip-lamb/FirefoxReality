@@ -229,9 +229,7 @@ public class NavigationURLBar extends FrameLayout {
         mBinding.popup.setOnClickListener(mPopUpListener);
 
         // Bookmarks
-        mBinding.bookmarkButton.setOnClickListener(v -> {
-            handleBookmarkClick();
-        });
+        mBinding.bookmarkButton.setOnClickListener(v -> handleBookmarkClick());
 
         clearFocus();
     }
@@ -240,7 +238,6 @@ public class NavigationURLBar extends FrameLayout {
         if (mViewModel != null) {
             mViewModel.getIsLoading().removeObserver(mIsLoadingObserver);
             mViewModel.getIsBookmarked().removeObserver(mIsBookmarkedObserver);
-            mViewModel.getHint().removeObserver(mHintObserver);
             mViewModel = null;
         }
     }
@@ -255,7 +252,6 @@ public class NavigationURLBar extends FrameLayout {
 
         mViewModel.getIsLoading().observe((VRBrowserActivity)getContext(), mIsLoadingObserver);
         mViewModel.getIsBookmarked().observe((VRBrowserActivity)getContext(), mIsBookmarkedObserver);
-        mViewModel.getHint().observe((VRBrowserActivity)getContext(), mHintObserver);
     }
 
     public void setSession(Session session) {
@@ -316,8 +312,6 @@ public class NavigationURLBar extends FrameLayout {
 
     private Observer<ObservableBoolean> mIsBookmarkedObserver = aBoolean -> mBinding.bookmarkButton.clearFocus();
 
-    private Observer<String> mHintObserver = hint -> mBinding.urlEditText.setHint(hint);
-
     public String getText() {
         return mBinding.urlEditText.getText().toString();
     }
@@ -337,27 +331,10 @@ public class NavigationURLBar extends FrameLayout {
 
     public void handleURLEdit(String text) {
         text = text.trim();
-        URI uri = null;
-        try {
-            boolean hasProtocol = text.contains("://");
-            String urlText = text;
-            // Detect when the protocol is missing from the URL.
-            // Look for a separated '.' in the text with no white spaces.
-            if (!hasProtocol && !urlText.contains(" ") && UrlUtils.isDomain(urlText)) {
-                urlText = "https://" + urlText;
-                hasProtocol = true;
-            }
-            if (hasProtocol) {
-                URL url = new URL(urlText);
-                uri = url.toURI();
-            }
-        }
-        catch (Exception ex) {
-        }
 
         String url;
-        if (uri != null) {
-            url = uri.toString();
+        if ((UrlUtils.isDomain(text) || UrlUtils.isIPUri(text)) && !text.contains(" ")) {
+            url = text;
             TelemetryWrapper.urlBarEvent(true);
             GleanMetricsService.urlBarEvent(true);
         } else if (text.startsWith("about:") || text.startsWith("resource://")) {

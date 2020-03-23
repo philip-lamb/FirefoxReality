@@ -178,14 +178,7 @@ public class NotificationManager {
 
         NotificationData data = mData.get(notificationId);
         if (data != null && data.mNotificationView.isVisible()) {
-            ThreadUtils.removeCallbacksFromUiThread(data.mHideTask);
-
-            data.mNotificationView.hide(UIWidget.REMOVE_WIDGET);
-
-            if (data.mNotification.mView instanceof UIButton) {
-                ((UIButton)data.mNotification.mView).setNotificationMode(false);
-            }
-
+            hideNotification(data);
             mData.remove(notificationId);
         }
     }
@@ -193,7 +186,18 @@ public class NotificationManager {
     public static void hideAll() {
         Iterator<Map.Entry<Integer, NotificationData>> it = mData.entrySet().iterator();
         while (it.hasNext()) {
-            hide(it.next().getKey());
+            hideNotification(it.next().getValue());
+            it.remove();
+        }
+    }
+
+    private static void hideNotification(@NonNull NotificationData data) {
+        ThreadUtils.removeCallbacksFromUiThread(data.mHideTask);
+
+        data.mNotificationView.hide(UIWidget.REMOVE_WIDGET);
+
+        if (data.mNotification.mView instanceof UIButton) {
+            ((UIButton)data.mNotification.mView).setNotificationMode(false);
         }
     }
 

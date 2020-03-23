@@ -5,11 +5,7 @@
 package org.mozilla.vrbrowser.browser.engine
 
 import android.content.Context
-import mozilla.components.concept.fetch.Client
-import org.mozilla.geckoview.ContentBlocking
-import org.mozilla.geckoview.GeckoRuntime
-import org.mozilla.geckoview.GeckoRuntimeSettings
-import org.mozilla.geckoview.WebExtension
+import org.mozilla.geckoview.*
 import org.mozilla.vrbrowser.BuildConfig
 import org.mozilla.vrbrowser.browser.SettingsStore
 import org.mozilla.vrbrowser.crashreporting.CrashReporterService
@@ -19,6 +15,8 @@ object EngineProvider {
     private val WEB_EXTENSIONS = arrayOf("webcompat_vimeo", "webcompat_youtube")
 
     private var runtime: GeckoRuntime? = null
+    private var executor: GeckoWebExecutor? = null
+    private var client: GeckoViewFetchClient? = null
 
     @Synchronized
     fun getOrCreateRuntime(context: Context): GeckoRuntime {
@@ -35,6 +33,7 @@ object EngineProvider {
             builder.displayDpiOverride(SettingsStore.getInstance(context).displayDpi)
             builder.screenSizeOverride(SettingsStore.getInstance(context).maxWindowWidth,
                     SettingsStore.getInstance(context).maxWindowHeight)
+            builder.useMultiprocess(true)
 
             if (SettingsStore.getInstance(context).transparentBorderWidth > 0) {
                 builder.useMaxScreenDepth(true)
@@ -60,8 +59,28 @@ object EngineProvider {
         return runtime!!
     }
 
-    fun createClient(context: Context): Client {
-        val runtime = getOrCreateRuntime(context)
-        return GeckoViewFetchClient(context, runtime)
+    fun createGeckoWebExecutor(context: Context): GeckoWebExecutor {
+        return GeckoWebExecutor(getOrCreateRuntime(context))
     }
+
+    fun getDefaultGeckoWebExecutor(context: Context): GeckoWebExecutor {
+        if (executor == null) {
+            executor = createGeckoWebExecutor(context)
+        }
+
+        return executor!!
+    }
+
+    fun createClient(context: Context): GeckoViewFetchClient {
+        return GeckoViewFetchClient(context)
+    }
+
+    fun getDefaultClient(context: Context): GeckoViewFetchClient {
+        if (client == null) {
+            client = createClient(context)
+        }
+
+        return client!!
+    }
+
 }

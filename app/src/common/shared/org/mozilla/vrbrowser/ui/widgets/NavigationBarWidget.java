@@ -19,6 +19,7 @@ import android.view.View;
 import android.widget.EditText;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.databinding.DataBindingUtil;
 import androidx.databinding.ObservableBoolean;
 import androidx.lifecycle.Observer;
@@ -38,6 +39,7 @@ import org.mozilla.vrbrowser.browser.engine.Session;
 import org.mozilla.vrbrowser.databinding.NavigationBarBinding;
 import org.mozilla.vrbrowser.search.suggestions.SuggestionsProvider;
 import org.mozilla.vrbrowser.telemetry.TelemetryWrapper;
+import org.mozilla.vrbrowser.ui.viewmodel.TrayViewModel;
 import org.mozilla.vrbrowser.ui.viewmodel.WindowViewModel;
 import org.mozilla.vrbrowser.ui.views.NavigationURLBar;
 import org.mozilla.vrbrowser.ui.views.UIButton;
@@ -53,6 +55,7 @@ import org.mozilla.vrbrowser.utils.AnimationHelper;
 import org.mozilla.vrbrowser.utils.ConnectivityReceiver;
 import org.mozilla.vrbrowser.utils.UrlUtils;
 
+import java.util.ArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -70,7 +73,16 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
     private static final int BOOKMARK_ADDED_NOTIFICATION_ID = 2;
     private static final int POPUP_NOTIFICATION_ID = 3;
 
+    public interface NavigationListener {
+        void onBack();
+        void onForward();
+        void onReload();
+        void onStop();
+        void onHome();
+    }
+
     private WindowViewModel mViewModel;
+    private TrayViewModel mTrayViewModel;
     private NavigationBarBinding mBinding;
     private AudioEngine mAudio;
     private WindowWidget mAttachedWindow;
@@ -92,6 +104,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
     private SendTabDialogWidget mSendTabDialog;
     private int mBlockedCount;
     private Executor mUIThreadExecutor;
+    private ArrayList<NavigationListener> mNavigationListeners;
 
     public NavigationBarWidget(Context aContext) {
         super(aContext);
@@ -105,10 +118,16 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
     public NavigationBarWidget(Context aContext, AttributeSet aAttrs, int aDefStyle) {
         super(aContext, aAttrs, aDefStyle);
+
         initialize(aContext);
     }
 
     private void initialize(@NonNull Context aContext) {
+        mTrayViewModel = new ViewModelProvider(
+                (VRBrowserActivity)getContext(),
+                ViewModelProvider.AndroidViewModelFactory.getInstance(((VRBrowserActivity) getContext()).getApplication()))
+                .get(TrayViewModel.class);
+
         updateUI();
 
         mAppContext = aContext.getApplicationContext();
@@ -118,6 +137,8 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
         mAudio = AudioEngine.fromContext(aContext);
 
         mResizeBackHandler = () -> exitResizeMode(ResizeAction.RESTORE_SIZE);
+
+        mNavigationListeners = new ArrayList<>();
 
         mFullScreenBackHandler = this::exitFullScreenMode;
         mVRVideoBackHandler = () -> {
@@ -157,6 +178,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
             if (mAudio != null) {
                 mAudio.playSound(AudioEngine.Sound.BACK);
             }
+            mNavigationListeners.forEach(NavigationListener::onBack);
         });
 
         mBinding.navigationBarNavigation.forwardButton.setOnClickListener(v -> {
@@ -165,6 +187,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
             if (mAudio != null) {
                 mAudio.playSound(AudioEngine.Sound.CLICK);
             }
+            mNavigationListeners.forEach(NavigationListener::onForward);
         });
 
         mBinding.navigationBarNavigation.reloadButton.setOnClickListener(v -> {
@@ -172,11 +195,33 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
             if (mViewModel.getIsLoading().getValue().get()) {
                 getSession().stop();
             } else {
-                getSession().reload();
+                if (SettingsStore.getInstance(mAppContext).isBypassCacheOnReloadEnabled()) {
+                    getSession().loadUri(getSession().getCurrentUri(), GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
+                } else {
+                    // int flags = SettingsStore.getInstance(mAppContext).isBypassCacheOnReloadEnabled() ? GeckoSession.LOAD_FLAGS_BYPASS_CACHE : GeckoSession.LOAD_FLAGS_NONE;
+                    // getSession().reload(flags);
+                    getSession().reload(GeckoSession.LOAD_FLAGS_NONE);
+                }
             }
             if (mAudio != null) {
                 mAudio.playSound(AudioEngine.Sound.CLICK);
             }
+            mNavigationListeners.forEach(NavigationListener::onReload);
+        });
+
+        mBinding.navigationBarNavigation.reloadButton.setOnLongClickListener(v -> {
+            v.requestFocusFromTouch();
+            if (mViewModel.getIsLoading().getValue().get()) {
+                getSession().stop();
+            } else {
+                // getSession().reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
+                getSession().loadUri(getSession().getCurrentUri(), GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
+            }
+            if (mAudio != null) {
+                mAudio.playSound(AudioEngine.Sound.CLICK);
+            }
+            mNavigationListeners.forEach(NavigationListener::onReload);
+            return true;
         });
 
         mBinding.navigationBarNavigation.homeButton.setOnClickListener(v -> {
@@ -185,6 +230,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
             if (mAudio != null) {
                 mAudio.playSound(AudioEngine.Sound.CLICK);
             }
+            mNavigationListeners.forEach(NavigationListener::onHome);
         });
 
         mBinding.navigationBarNavigation.servoButton.setOnClickListener(v -> {
@@ -357,8 +403,13 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
         }
 
         detachFromWindow();
-
         mAttachedWindow = null;
+
+        if (mSendTabDialog != null && !mSendTabDialog.isReleased()) {
+            mSendTabDialog.releaseWidget();
+        }
+        mSendTabDialog = null;
+
         super.releaseWidget();
     }
 
@@ -374,6 +425,14 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
         aPlacement.translationY = -35;
         aPlacement.opaque = false;
         aPlacement.cylinder = true;
+    }
+
+    public void addNavigationBarListener(@Nullable NavigationListener listener) {
+        mNavigationListeners.add(listener);
+    }
+
+    public void removeNavigationBarListener(@Nullable NavigationListener listener) {
+        mNavigationListeners.remove(listener);
     }
 
     @Override
@@ -480,7 +539,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
         mWidgetManager.pushWorldBrightness(this, WidgetManagerDelegate.DEFAULT_DIM_BRIGHTNESS);
 
-        mWidgetManager.setTrayVisible(false);
+        mTrayViewModel.setShouldBeVisible(false);
 
         if (mProjectionMenu == null) {
             mProjectionMenu = new VideoProjectionMenuWidget(getContext());
@@ -512,7 +571,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
         }
 
         if (!mAttachedWindow.isFullScreen()) {
-            mWidgetManager.setTrayVisible(true);
+            mTrayViewModel.setShouldBeVisible(true);
             return;
         }
 
@@ -534,7 +593,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
         mWidgetManager.popWorldBrightness(this);
         AnimationHelper.fadeOut(mBinding.navigationBarFullscreen.fullScreenModeContainer, 0, null);
 
-        mWidgetManager.setTrayVisible(true);
+        mTrayViewModel.setShouldBeVisible(true);
         closeFloatingMenus();
         mWidgetManager.popWorldBrightness(mBrightnessWidget);
     }
@@ -553,7 +612,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
             AnimationHelper.fadeOut(mBinding.navigationBarNavigation.navigationBarContainer, 0, null);
         }
         mWidgetManager.pushBackHandler(mResizeBackHandler);
-        mWidgetManager.setTrayVisible(false);
+        mTrayViewModel.setShouldBeVisible(false);
         closeFloatingMenus();
 
         float maxScale = 3.0f;
@@ -615,7 +674,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
         }
         AnimationHelper.fadeOut(mBinding.navigationBarMenu.resizeModeContainer, 0, () -> onWidgetUpdate(mAttachedWindow));
         mWidgetManager.popBackHandler(mResizeBackHandler);
-        mWidgetManager.setTrayVisible(!mAttachedWindow.isFullScreen());
+        mTrayViewModel.setShouldBeVisible(!mAttachedWindow.isFullScreen());
         closeFloatingMenus();
 
         if (aResizeAction == ResizeAction.KEEP_SIZE) {
@@ -980,8 +1039,9 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
             public void onSwitchMode() {
                 int uaMode = mAttachedWindow.getSession().getUaMode();
                 if (uaMode == GeckoSessionSettings.USER_AGENT_MODE_DESKTOP) {
-                    mHamburgerMenu.setUAMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE);
-                    mAttachedWindow.getSession().setUaMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE);
+                    final int defaultUaMode = SettingsStore.getInstance(mAppContext).getUaMode();
+                    mHamburgerMenu.setUAMode(defaultUaMode);
+                    mAttachedWindow.getSession().setUaMode(defaultUaMode);
 
                 } else {
                     mHamburgerMenu.setUAMode(GeckoSessionSettings.USER_AGENT_MODE_DESKTOP);
@@ -1003,11 +1063,10 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
     }
 
     public void showSendTabDialog() {
-        if (mSendTabDialog == null) {
-            mSendTabDialog = new SendTabDialogWidget(getContext());
-        }
+        mSendTabDialog = SendTabDialogWidget.getInstance(getContext());
         mSendTabDialog.mWidgetPlacement.parentHandle = mWidgetManager.getFocusedWindow().getHandle();
         mSendTabDialog.setSessionId(mAttachedWindow.getSession().getId());
+        mSendTabDialog.setDelegate(null);
         mSendTabDialog.show(UIWidget.REQUEST_FOCUS);
     }
 

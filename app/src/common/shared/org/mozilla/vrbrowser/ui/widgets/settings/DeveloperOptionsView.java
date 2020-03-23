@@ -58,9 +58,6 @@ class DeveloperOptionsView extends SettingsView {
         mBinding.showConsoleSwitch.setOnCheckedChangeListener(mConsoleLogsListener);
         setConsoleLogs(SettingsStore.getInstance(getContext()).isConsoleLogsEnabled(), false);
 
-        mBinding.multiprocessSwitch.setOnCheckedChangeListener(mMultiprocessListener);
-        setMultiprocess(SettingsStore.getInstance(getContext()).isMultiprocessEnabled(), false);
-
         mBinding.performanceMonitorSwitch.setOnCheckedChangeListener(mPerformanceListener);
         setPerformance(SettingsStore.getInstance(getContext()).isPerformanceMonitorEnabled(), false);
         // Hide Performance Monitor switch until it can handle multiple windows.
@@ -68,6 +65,9 @@ class DeveloperOptionsView extends SettingsView {
 
         mBinding.hardwareAccelerationSwitch.setOnCheckedChangeListener(mUIHardwareAccelerationListener);
         setUIHardwareAcceleration(SettingsStore.getInstance(getContext()).isUIHardwareAccelerationEnabled(), false);
+
+        mBinding.bypassCacheOnReloadSwitch.setOnCheckedChangeListener(mBypassCacheOnReloadListener);
+        setBypassCacheOnReload(SettingsStore.getInstance(getContext()).isBypassCacheOnReloadEnabled(), false);
 
         if (BuildConfig.DEBUG) {
             mBinding.debugLoggingSwitch.setVisibility(View.GONE);
@@ -92,10 +92,6 @@ class DeveloperOptionsView extends SettingsView {
         setConsoleLogs(value, doApply);
     };
 
-    private SwitchSetting.OnCheckedChangeListener mMultiprocessListener = (compoundButton, value, doApply) -> {
-        setMultiprocess(value, doApply);
-    };
-
     private SwitchSetting.OnCheckedChangeListener mPerformanceListener = (compoundButton, value, doApply) -> {
         setPerformance(value, doApply);
     };
@@ -106,6 +102,10 @@ class DeveloperOptionsView extends SettingsView {
 
     private SwitchSetting.OnCheckedChangeListener mUIHardwareAccelerationListener = (compoundButton, value, doApply) -> {
         setUIHardwareAcceleration(value, doApply);
+    };
+
+    private SwitchSetting.OnCheckedChangeListener mBypassCacheOnReloadListener = (compundButton, value, doApply) -> {
+        setBypassCacheOnReload(value, doApply);
     };
 
     private SwitchSetting.OnCheckedChangeListener mServoListener = (compoundButton, b, doApply) -> {
@@ -121,9 +121,7 @@ class DeveloperOptionsView extends SettingsView {
         if (mBinding.showConsoleSwitch.isChecked() != SettingsStore.CONSOLE_LOGS_DEFAULT) {
             setConsoleLogs(SettingsStore.CONSOLE_LOGS_DEFAULT, true);
         }
-        if (mBinding.multiprocessSwitch.isChecked() != SettingsStore.MULTIPROCESS_DEFAULT) {
-            setMultiprocess(SettingsStore.MULTIPROCESS_DEFAULT, true);
-        }
+
         if (mBinding.servoSwitch.isChecked() != SettingsStore.SERVO_DEFAULT) {
             setServo(SettingsStore.SERVO_DEFAULT, true);
         }
@@ -140,6 +138,10 @@ class DeveloperOptionsView extends SettingsView {
         if (mBinding.hardwareAccelerationSwitch.isChecked() != SettingsStore.UI_HARDWARE_ACCELERATION_DEFAULT) {
             setUIHardwareAcceleration(SettingsStore.UI_HARDWARE_ACCELERATION_DEFAULT, true);
             restart = true;
+        }
+
+        if (mBinding.bypassCacheOnReloadSwitch.isChecked() != SettingsStore.BYPASS_CACHE_ON_RELOAD) {
+            setBypassCacheOnReload(SettingsStore.BYPASS_CACHE_ON_RELOAD, true);
         }
 
         if (restart) {
@@ -168,18 +170,6 @@ class DeveloperOptionsView extends SettingsView {
 
         if (doApply) {
             SessionStore.get().setConsoleOutputEnabled(value);
-        }
-    }
-
-    private void setMultiprocess(boolean value, boolean doApply) {
-        mBinding.multiprocessSwitch.setOnCheckedChangeListener(null);
-        mBinding.multiprocessSwitch.setValue(value, false);
-        mBinding.multiprocessSwitch.setOnCheckedChangeListener(mMultiprocessListener);
-
-        SettingsStore.getInstance(getContext()).setMultiprocessEnabled(value);
-
-        if (doApply) {
-            SessionStore.get().resetMultiprocess();
         }
     }
 
@@ -212,6 +202,16 @@ class DeveloperOptionsView extends SettingsView {
         if (doApply) {
             SettingsStore.getInstance(getContext()).setDebugLoggingEnabled(value);
             showRestartDialog();
+        }
+    }
+
+    private void setBypassCacheOnReload(boolean value, boolean doApply) {
+        mBinding.bypassCacheOnReloadSwitch.setOnCheckedChangeListener(null);
+        mBinding.bypassCacheOnReloadSwitch.setValue(value, false);
+        mBinding.bypassCacheOnReloadSwitch.setOnCheckedChangeListener(mBypassCacheOnReloadListener);
+
+        if (doApply) {
+            SettingsStore.getInstance(getContext()).setBypassCacheOnReload(value);
         }
     }
 

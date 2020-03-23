@@ -40,6 +40,8 @@ public:
   void StartFrame() override;
   void BindEye(const device::Eye aWhich) override;
   void EndFrame(const bool aDiscard) override;
+  bool IsInGazeMode() const override;
+  int32_t GazeModeIndex() const override;
   // Custom methods
   void Pause();
   void Resume();
@@ -53,6 +55,7 @@ public:
   void UpdateControllerConnected(const int aIndex, const bool aConnected);
   void UpdateControllerPose(const int aIndex, const bool a6Dof, const vrb::Vector& aPosition, const vrb::Quaternion& aRotation);
   void UpdateControllerButtons(const int aIndex, const int32_t aButtonsState, const float aGrip, const float axisX, const float axisY, const bool touched);
+  void Recenter();
 protected:
   struct State;
   DeviceDelegatePicoVR(State& aState);

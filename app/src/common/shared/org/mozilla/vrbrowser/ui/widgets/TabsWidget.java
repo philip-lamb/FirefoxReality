@@ -159,6 +159,10 @@ public class TabsWidget extends UIDialog {
 
     @Override
     public void releaseWidget() {
+        if (mSendTabDialog != null && !mSendTabDialog.isReleased()) {
+            mSendTabDialog.releaseWidget();
+        }
+        mSendTabDialog = null;
         super.releaseWidget();
     }
 
@@ -293,12 +297,13 @@ public class TabsWidget extends UIDialog {
 
                 @Override
                 public void onSend(TabView aSender) {
-                    if (mSendTabDialog == null) {
-                        mSendTabDialog = new SendTabDialogWidget(getContext());
-                    }
+                    mSendTabDialog = SendTabDialogWidget.getInstance(getContext());
                     mSendTabDialog.setSessionId(aSender.getSession().getId());
                     mSendTabDialog.mWidgetPlacement.parentHandle = mWidgetManager.getFocusedWindow().getHandle();
+                    mSendTabDialog.setDelegate(() -> show(REQUEST_FOCUS));
                     mSendTabDialog.show(UIWidget.REQUEST_FOCUS);
+
+                    holder.tabView.reset();
                 }
             });
         }
@@ -318,9 +323,10 @@ public class TabsWidget extends UIDialog {
         mSelecting = true;
         mSelectTabsButton.setVisibility(View.GONE);
         mDoneButton.setVisibility(View.VISIBLE);
-        mAdapter.notifyDataSetChanged();
         updateSelectionMode();
         mWidgetManager.pushBackHandler(mSelectModeBackHandler);
+
+        post(() -> mAdapter.notifyDataSetChanged());
     }
 
     private void exitSelectMode() {
@@ -331,9 +337,10 @@ public class TabsWidget extends UIDialog {
         mSelectTabsButton.setVisibility(View.VISIBLE);
         mDoneButton.setVisibility(View.GONE);
         mSelectedTabs.clear();
-        mAdapter.notifyDataSetChanged();
         updateSelectionMode();
         mWidgetManager.popBackHandler(mSelectModeBackHandler);
+
+        post(() -> mAdapter.notifyDataSetChanged());
     }
 
     private void updateSelectionMode() {

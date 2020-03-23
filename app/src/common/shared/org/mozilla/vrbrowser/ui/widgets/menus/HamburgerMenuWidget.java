@@ -8,14 +8,17 @@ import androidx.annotation.IntDef;
 
 import org.mozilla.geckoview.GeckoSessionSettings;
 import org.mozilla.vrbrowser.R;
+import org.mozilla.vrbrowser.browser.SettingsStore;
 import org.mozilla.vrbrowser.ui.widgets.WidgetPlacement;
 import org.mozilla.vrbrowser.utils.AnimationHelper;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Optional;
 
 public class HamburgerMenuWidget extends MenuWidget {
+
+    private boolean mProxify = SettingsStore.getInstance(getContext()).getLayersEnabled();
 
     public interface MenuDelegate {
         void onSendTab();
@@ -29,7 +32,7 @@ public class HamburgerMenuWidget extends MenuWidget {
     public static final int WINDOW_RESIZE = 1;
     public static final int SWITCH_MODE = 2;
 
-    HashMap<Integer, MenuItem> mItems;
+    LinkedHashMap<Integer, MenuItem> mItems;
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     Optional<MenuDelegate> mMenuDelegate;
     boolean mSendTabEnabled = true;
@@ -65,6 +68,7 @@ public class HamburgerMenuWidget extends MenuWidget {
 
     @Override
     public void show(int aShowFlags) {
+        mWidgetPlacement.proxifyLayer = mProxify;
         super.show(aShowFlags);
 
         AnimationHelper.scaleIn(findViewById(R.id.menuContainer), 100, 0, null);
@@ -73,6 +77,7 @@ public class HamburgerMenuWidget extends MenuWidget {
     @Override
     public void hide(int aHideFlags) {
         AnimationHelper.scaleOut(findViewById(R.id.menuContainer), 100, 0, () -> HamburgerMenuWidget.super.hide(aHideFlags));
+        mWidgetPlacement.proxifyLayer = false;
     }
 
     @Override
@@ -110,19 +115,18 @@ public class HamburgerMenuWidget extends MenuWidget {
 
     @SuppressLint("UseSparseArrays")
     private void updateMenuItems() {
-        mItems = new HashMap<>();
+        mItems = new LinkedHashMap<>();
 
+        mItems.put(WINDOW_RESIZE,
+                new MenuItem(getContext().getString(R.string.hamburger_menu_resize),
+                        R.drawable.ic_icon_resize,
+                        () -> mMenuDelegate.ifPresent(MenuDelegate::onResize)));
         if (mSendTabEnabled) {
             mItems.put(SEND_TAB,
                     new MenuItem(getContext().getString(R.string.hamburger_menu_send_tab),
                             R.drawable.ic_icon_tabs_sendtodevice,
                             () -> mMenuDelegate.ifPresent(MenuDelegate::onSendTab)));
         }
-
-        mItems.put(WINDOW_RESIZE,
-                new MenuItem(getContext().getString(R.string.hamburger_menu_resize),
-                        R.drawable.ic_icon_resize,
-                        () -> mMenuDelegate.ifPresent(MenuDelegate::onResize)));
 
         mItems.put(SWITCH_MODE,
                 new MenuItem(getContext().getString(R.string.hamburger_menu_switch_to_desktop),

@@ -138,6 +138,10 @@
          opens a dialog box that contains language-related settings. -->
     <string name="settings_language">Language</string>
 
+    <!-- This string is used to label the first string in the language list for voice and display languages.
+         If chosen the device will use the system language as the main language. -->
+    <string name="settings_language_follow_device">Follow device language</string>
+
     <!-- This string is used to label a text label for selecting the language in the 'Language' dialog window
          (accessible from the browser's Settings' dialog window). Below this string appears
          the different options for language settings. -->
@@ -328,13 +332,6 @@
     <string name="developer_options_env_override">Enable Environment Override</string>
 
     <!-- This string labels an On/Off switch in the developer options dialog and is used to toggle
-         running content in a separate process.
-         Multiprocessing: the running of two or more programs or sequences of instructions
-         simultaneously by a computer with more than one central processor.
-         A dialog should appear with a field labeled with the text, 'Enable Multiprocess'. -->
-    <string name="developer_options_multiprocess">Enable Multiprocess</string>
-
-    <!-- This string labels an On/Off switch in the developer options dialog and is used to toggle
          the performance monitor. The Performance monitor is used to detect pages that cause the
          browser to run below a target framerate and pauses the page to restore performance.
     -->
@@ -349,8 +346,15 @@
     <!-- This string labels an On/Off switch in the developer options dialog and is used to toggle
      UI render mode. If enables it uses hardware acceleration which should be faster but it may be more unstable.
      If disabled it uses software rendering which is stable but not as performant as hardware acceleration
--->
+    -->
     <string name="hardware_acceleration_switch">Enable UI Hardware Acceleration</string>
+
+    <!-- This string labels an On/Off switch in the developer options dialog and is used to toggle
+         the behavior of the navigation bar reload button. When enabled, the reloads will bypass
+         the browser cache. This feature is used by web developers when they want to always view
+         the most recent version of a web site.
+    -->
+    <string name="bypass_cache_on_reload_switch">Enable Cache Bypass On Reload</string>
 
     <!-- The string labels an On/Off switch in the developer options dialog and is used to toggle enabling Servo. -->
     <string name="developer_options_servo">Enable Servo</string>
@@ -952,4 +956,424 @@
     <string name="privacy_options_popups_list_empty_second">A list of sites with permissions will appear here.</string>
 
 
-    </resources>
+    <!-- This string labels the Reset button that restores the default controller settings values. -->
+    <string name="controller_options_reset">Reset Controller Settings</string>
+
+    <!-- This string labels the Reset button that restores the default environment settings values. -->
+    <string name="environment_options_reset">Reset Environment Settings</string>
+
+    <!-- This string labels the Reset button that restores the default voice search language settings values. -->
+    <string name="language_options_reset">Reset Voice Search Language Settings</string>
+
+    <!-- This string labels the Reset button that restores the default display language settings values. -->
+    <string name="display_language_options_reset">Reset Display Language</string>
+
+    <!-- This string labels the Reset button that restores the default content language settings values. -->
+    <string name="content_language_options_reset">Reset Preferred Web Site Language</string>
+
+    <!-- This string labels the Reset button that restores all language settings values. -->
+    <string name="all_language_options_reset">Reset All Language Settings</string>
+
+    <!-- This string labels the description in the Voice Search Language button in the main language setting dialog. -->
+    <string name="language_options_voice_search_language_title">Voice Search Language:</string>
+
+    <!-- This string labels the description in the Content Language button in the main language setting dialog. -->
+    <string name="language_options_content_language_title">Preferred Language for Displaying Web Sites:</string>
+
+    <!-- This string labels the description in the Display Language button in the main language setting dialog. -->
+    <string name="language_options_display_language_title">Display Language for App:</string>
+
+    <!-- This string labels the description in the Content Language header for preferred languages list. -->
+    <string name="language_options_preferred_languages">Preferred Language(s)</string>
+
+    <!-- This string labels the description in the Content Language header for available languages list. -->
+    <string name="language_options_available_languages">Available Languages</string>
+
+    <!-- This string is for the table column name (in the browser's 'Bookmarks' list) for the 'Name' of the bookmarked website. -->
+    <string name="col_name">Name</string>
+
+    <!-- This string is for the table column name (in the browser's 'Bookmarks' list) for the 'Tags' of the bookmarked website. -->
+    <string name="col_tags">Tags</string>
+
+    <!-- This string is for the table column name (in the browser's 'Bookmarks' list) for the 'Location' (or 'URL' or 'Address') of the bookmarked website. -->
+    <string name="col_url">Location</string>
+
+    <!-- This string is for the table column name (in the browser's 'Bookmarks' list) for the date of when the bookmarked website was most recently visited. -->
+    <string name="col_most_recent_visit">Most Recent Visit</string>
+
+    <!-- This string is for the table column name (in the browser's 'Bookmarks' list) for the date of when the website was bookmarked. -->
+    <string name="col_date_added">Added</string>
+
+    <!-- This string is for the table column name (in the browser's 'Bookmarks' list) for the date of when the bookmarked website was last edited. -->
+    <string name="col_date_last_modified">Last Modified</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Back' button in the browser's navigation bar.
+         'Back' refers to going back one page in 'History'. -->
+    <string name="back_tooltip">Backwards</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Forward' button in the browser's navigation bar.
+         'Forward' refers to going back one page in 'History'. -->
+    <string name="forward_tooltip">Forwards</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Refresh' button in the browser's navigation bar.
+         'Refresh' refers to reloading the current page. -->
+    <string name="refresh_tooltip">Refresh</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Stop' button in the browser's navigation bar.
+         'Stop' stops the current page load. -->
+    <string name="stop_tooltip">Stop Loading</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Resume' button in the browser's title bar media buttons.
+         When clicked the current media playback is resumed. -->
+    <string name="media_resume_tooltip">Resume</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Pause' button in the browser's title bar media buttons.
+         When clicked the current media playback is paused. -->
+    <string name="media_pause_tooltip">Pause</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Home' button in the browser's navigation bar.
+         'Home' refers to the browser's start page (e.g., the Firefox Reality Home Page). -->
+    <string name="home_tooltip">Home</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Voice Search' (microphone) button in the
+         browser's navigation bar. 'Voice Search' refers to the browser's system for searching the Web using
+         speech-to-text recognition. -->
+    <string name="voice_search_tooltip">Voice Search</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Request desktop site' button in the
+         browser's navigation bar. The button it labels, when pressed, change the currently used user agent. -->
+    <string name="request_dekstop_site_tooltip">Request desktop site</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Clear' button in the
+         browser's navigation bar. The button it labels, when pressed, clears the navigation bar text. -->
+    <string name="clear_tooltip">Clear</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Pop-Up' button in the
+         browser's navigation bar. The button it labels, when pressed, Shows the pop-up blocked dialog. -->
+    <string name="popup_tooltip">Pop-Up Blocked</string>
+
+    <!-- This string is for the tooltip that when clicking the 'Info' (ⓘ) icon visible next to the current website's
+         URL in the URL bar. The button it labels, when pressed, shows information about the site. -->
+    <string name="site_info_tooltip">Show site info.</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Servo' button in the browser's navigation bar.
+         'Servo' refers to the Servo engine. -->
+    <string name="servo_tooltip">Use Servo</string>
+
+    <!-- This string is for the tooltip that appears upon hovering the 'Resize' button in the browser's navigation bar.
+         'Resize' refers to the button used to resize the browset window. -->
+    <string name="resize_tooltip">Resize</string>
+
+    <!-- This string is for the tooltip that appears when the user is not in the browser's Private Browsing mode
+         and hovers over the 'Private Browsing' icon in the browser's tray menu. -->
+    <string name="private_browsing_enter_tooltip">Enter Private Browsing</string>
+
+    <!-- This string is for the tooltip that appears when the user is in the browser's Private Browsing mode
+         and hovers over the 'Private Browsing' icon in the browser's tray menu. -->
+    <string name="private_browsing_exit_tooltip">Exit Private Browsing</string>
+
+    <!-- This string is shown in the context menu after a longpress on a link. When clicked it opens the target url in a new window. -->
+    <string name="context_menu_open_new_window_1">Open in a new window</string>
+
+    <!-- This string is shown in the context menu after a longpress on a link. When clicked it opens the target url in a new tab. -->
+    <string name="context_menu_open_new_tab_1">Open in a new tab</string>
+
+    <!-- This string is shown in the context menu after a longpress on a link. When clicked it copies the target to the clipboard -->
+    <string name="context_menu_copy_link">Copy link</string>
+
+    <!-- This string is shown in the context menu after a longpress on a text. When clicked it cuts the selected text and can be pasted later. -->
+    <string name="context_menu_cut_text">Cut</string>
+
+    <!-- This string is shown in the context menu after a longpress on a text. When clicked it copies the selected text and can be pasted later. -->
+    <string name="context_menu_copy_text">Copy</string>
+
+    <!-- This string is shown in the context menu after a longpress on a input. When clicked it pastes the current text on the clipboard. -->
+    <string name="context_menu_paste_text">Paste</string>
+
+    <!-- This string is shown in the context menu after a longpress on a text. When clicked it selects all text from the longpressed page area. -->
+    <string name="context_menu_select_all_text">Select All</string>
+
+    <!-- This string is shown in the context menu after a longpress on a text. When clicked it unselects the selected text. -->
+    <string name="context_menu_unselect">Deselect</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'Bookmark' icon in the
+         browser's navigation bar. The button it labels, when pressed, bookmarks the currently open web site. -->
+    <string name="bookmark_tooltip">Bookmark this page</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'Bookmark' icon in the
+         browser's navigation bar if the site is already bookmarked. The button it labels, when pressed,
+         removes the currently open web site from bookmarks. -->
+    <string name="remove_bookmark_tooltip">Remove from Bookmarks</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'Bookmarks' icon in the
+         tray. The button it labels, when pressed, opens a list view of the user's saved
+         Bookmarks. -->
+    <string name="bookmarks_tooltip">Bookmarks</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'Bookmarks' icon in the
+         tray and the Bookmarks view is closed. The button it labels, when pressed, opens a list view of the user's saved
+         Bookmarks. -->
+    <string name="open_bookmarks_tooltip">Open Bookmarks</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'Bookmarks' icon in the
+         tray and the Bookmarks view is closed. The button it labels, when pressed, closes the Bookmarks view. -->
+    <string name="close_bookmarks_tooltip">Close Bookmarks</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'Settings' icon in the
+         tray. The button it labels, when pressed, opens the Settings panel. -->
+    <string name="settings_tooltip">Settings</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'New Window' icon in the
+         tray. The button it labels, when pressed, opens a new browser window. -->
+    <string name="new_window_tooltip">Open a New Window</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'History' icon in the
+         tray and the History view is closed. The button it labels, when pressed, opens a list view of the user's visited
+         pages. -->
+    <string name="open_history_tooltip">Open History</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'History' icon in the
+         tray and the History view is closed. The button it labels, when pressed, closes the History view. -->
+    <string name="close_history_tooltip">Close History</string>
+
+    <!-- This string is displayed in any button used for removing all the items in the current context. -->
+    <string name="remove_all">Remove All</string>
+
+    <!-- This string is used as the title of the Private Browsing page that is opened when the
+         Private Browsing Mode button from the tray is clicked. -->
+    <string name="private_browsing_title">Private Browsing</string>
+
+    <!-- This string is used as the body of the Private Browsing page that is opened when the
+         Private Browsing Mode button from the tray is clicked.
+         '%1$s' will be replaced at runtime with the app's name. -->
+    <string name="private_browsing_body"><![CDATA[<p>When you browse in a Private Window, %1$s <strong>does not save</strong>:</p>
+<ul class="two-column">
+  <li>visited pages</li>
+  <li>searches</li>
+  <li>cookies</li>
+  <li>temporary files</li>
+</ul>
+<p>Private Browsing <strong>doesn’t make you anonymous</strong> on the Internet. Your employer or Internet service provider can still know what page you visit.</p>
+<p class="about-info">Learn more about <a id="learnMore">Private Browsing</a>.</p>]]></string>
+
+    <!-- This string is displayed in any button used for removing all the items in the current context.
+         '%1$s' will be replaced at runtime with the app's name. -->
+    <string name="homepage_hint">%1$s Home (Default)</string>
+
+
+    <!-- This string is displayed in the title of an authentication prompt, which requests a username and a password. -->
+    <string name="authentication_required">Authentication Required</string>
+    <!-- This string is displayed as the label of a username input in an authentication prompt. -->
+    <string name="authentication_username">Username:</string>
+    <!-- This string is displayed as the label of a password input in an authentication prompt. -->
+    <string name="authentication_password">Password:</string>
+    <!-- This string is displayed as the label of a switch of an authentication prompt in order to show or hide the text in a password field. -->
+    <string name="authentication_show_password">Show password:</string>
+
+
+    <!-- This string is displayed in the title of the notification message shown when the device loses internet connection. -->
+    <string name="no_internet_title">Internet Connection Lost</string>
+    <!-- This string is displayed in the message of the notification message shown when the device loses internet connection. -->
+    <string name="no_internet_message">Check your device configuration to fix the problem.</string>
+
+    <!-- This string is displayed in the message of the notification message shown when the user tries to open a new window and
+      it has already opened the maximum number of allowed windows. %1$s expands to a integer value that represent the maximum windows
+      that can be opened (initially 3) -->
+    <string name="max_windows_msg">Only %1$s windows can be open. Close one to open another.</string>
+
+    <!-- This string is displayed in the button of the notification message shown when the user tries to open a new window and
+      it has already opened the maximum number of allowed windows. -->
+    <string name="max_windows_button">OK</string>
+
+    <!-- This string is displayed in the title of the alert dialog shown when the user does not have permission to run the application on the device. -->
+    <string name="not_entitled_title">Unable To Run</string>
+    <!-- This string is displayed in the message body of the alert dialog shown when the user does not have permission to run the application on the device.
+         '%1$s' will be replace at runtime with the app's name. -->
+    <string name="not_entitled_message">%1$s does not have permission to run on this device and will now exit.</string>
+
+    <!-- This string is displayed in a button that when pressed allows a user to view a page that has been blocked from being displayed.-->
+    <string name="performance_unblock_page">Unblock Page</string>
+    <!-- This string is displayed as the title of a dialog displayed when poor web page performance has been detected. -->
+    <string name="performance_title">Poor Site Performance</string>
+    <!-- This string is displayed as the message body of a dialog displayed when poor web page performance has been detected and the page has been unloaded to restore performance. -->
+    <string name="performance_message">Try reducing the window size to improve performance. Unblocking this page may crash your app.</string>
+
+    <!-- This string is displayed in the title of the Voice Search samples collect dialog. That dialog is shown the first time
+         a user tries to use the voice search. -->
+    <string name="voice_samples_collect_data_dialog_title">Allow %1$s to Collect Voice Samples for Research?</string>
+
+    <!-- This string is displayed in the description of the Voice Search samples collect dialog. That dialog is shown the first time
+         a user tries to use the voice search. -->
+    <string name="voice_samples_collect_dialog_description2">In order to improve our voice recognition and other services, we need to collect voice samples for research. We store your data securely and without identifying information. You’ll always be able to use voice search, even if you don’t allow collection.&lt;a href=&quot;privacy&quot;&gt;Learn More&lt;/a&gt;</string>
+
+    <!-- This string is displayed in the button of the Voice Search samples collect dialog.
+         When clicked the user opts in to the voice data collection. -->
+    <string name="voice_samples_collect_dialog_allow">Allow</string>
+
+    <!-- This string is displayed in the button of the Voice Search samples collect dialog.
+         When clicked the user opts out of the voice data collection. -->
+    <string name="voice_samples_collect_dialog_do_not_allow">Don’t Allow</string>
+
+    <!-- This string is displayed in the content language list in front of the system default language in between parenthesis -->
+    <string name="language_default">Default</string>
+
+    <!-- This string is displayed in the URL bar when the user is in the home page.
+         '%1$s' will be replaced at runtime with the app's name. -->
+    <string name="url_home_title">%1$s Home</string>
+
+    <!-- This string is displayed in the URL bar when the user is in the bookmarks panel -->
+    <string name="url_bookmarks_title">Bookmarks</string>
+
+    <!-- This string is displayed in the URL bar when the user is in the history panel -->
+    <string name="url_history_title">History</string>
+
+    <!-- This string is displayed in the Clear button on top of the window when in private mode. It only appears
+         when there is one window left. When clicked, it closes the private session -->
+    <string name="private_clear_button">Clear</string>
+
+    <!-- This string is displayed in the title of the pop-up blocking dialog.
+         '%1$s' will be replaced at runtime with the app's name. -->
+    <string name="popup_block_title">%1$s prevented a pop-up from this site</string>
+
+    <!-- This string is displayed as a description below the title of the pop-up blocking dialog. -->
+    <string name="popup_block_description">Would you like to show them anyway?</string>
+
+    <!-- This string is displayed on the right of the checkbox in the the pop-up blocking dialog.
+         If the checkbox is checked Firefox will never ask again to block pop-ups for this site -->
+    <string name="popup_block_checkbox">Don’t ask again for this site</string>
+
+    <!-- This string is displayed on the left button of the pop-up blocking dialog.
+         If the button is clicked the pop-up will be shown -->
+    <string name="popup_block_button_show">Show</string>
+
+    <!-- This string is displayed on the right button of the pop-up blocking dialog.
+         If the button is clicked the pop-up will be blocked -->
+    <string name="popup_block_button_cancel">Cancel</string>
+
+    <!-- This string is displayed in a button on the header of the tabs dialog. When clicked,
+        it allows to select tabs from the tab -->
+    <string name="tabs_select">Select</string>
+
+    <!-- This string is displayed in a button on the header of the tabs dialog, after selection mode is enabled with
+        the Select` button. When clicked it closes the selection mode -->
+    <string name="tabs_select_done">Done</string>
+
+    <!-- This string is displayed in a button on the header of the tabs dialog, after selection mode is enabled with
+    the Select` button. When clicked it selects all the available tabs -->
+    <string name="tabs_select_all">Select all</string>
+
+    <!-- This string is displayed in a button on the header of the tabs dialog, after selection mode is enabled with
+the Select` button. When clicked it closes all the previously selected tabs -->
+    <string name="tabs_close_selected">Close tabs</string>
+
+    <!-- This string is displayed in a button on the header of the tabs dialog.
+     When clicked it closes all the available tabs -->
+    <string name="tabs_close_all">Close all</string>
+
+    <!-- This string is displayed in a button on the header of the tabs dialog.
+       When clicked it unselects all the tabs -->
+    <string name="tabs_unselect">Deselect all</string>
+
+    <!-- This string is displayed in a label on the header of the tabs dialog. It indicates that there is one tab
+        available -->
+    <string name="tabs_counter_singular">1 Tab</string>
+
+    <!-- This string is displayed in a label on the header of the tabs dialog. It indicates that there are n tabs available.
+        %1$s expands to a integer which indicates the number of tabs. This number is always larger than 1, ortherwise
+        tabs_counter_singular key is used-->
+    <string name="tabs_counter_plural">%1$s Tabs</string>
+
+    <!-- This string is displayed in a label on the header of the tabs dialog. It's only visible in tab selection mode.
+        It indicates that there is one tab selected -->
+    <string name="tabs_selected_counter_singular">1 Tab selected</string>
+
+    <!-- This string is displayed in a label on the header of the tabs dialog. It's only visible in tab selection mode.
+        It indicates that there are n tabs selected. %1$s expands to a integer which indicates the number of tabs.
+        This number is always larger than 1, ortherwise tabs_selected_counter_singular key is used-->
+    <string name="tabs_selected_counter_plural">%1$s Tabs selected</string>
+
+    <!-- This string is displayed in a label on the header of the tabs dialog. It's only visible in tab selection mode.
+     It indicates that there are no tabs selected -->
+    <string name="tabs_selected_counter_none">0 Tabs selected</string>
+
+    <!-- This string is for the tooltip that appears when the users hovers in the tabs icon in the browser's
+        tray menu. When clicked it opens the tray dialog in the current active window -->
+    <string name="tabs_tray_tooltip">View Tabs</string>
+
+    <!-- This string is displayed in a tooltip that appears in the tray bar on top of the
+     tabs tray button then a tab has been added on the background. -->
+    <string name="tab_added_notification">New Tab Added!</string>
+
+    <!-- This string is displayed in a tooltip that appears in the tray bar on top of the
+     tabs tray button then a tab has been sent. -->
+    <string name="tab_sent_notification">Tab Sent!</string>
+
+    <!-- This string is displayed inside the Hamburger menu at the right of the navigation bar. When clicked
+         it opens the send tab dialog -->
+    <string name="hamburger_menu_send_tab">Send Tab to Device</string>
+
+    <!-- This string is displayed inside the Hamburger menu at the right of the navigation bar. When clicked
+         it opens the window resize panel -->
+    <string name="hamburger_menu_resize">Window Resize</string>
+
+    <!-- This string is displayed inside the Hamburger menu at the right of the navigation bar. When clicked
+         it switches User Agent from desktop to mobile and vice versa -->
+    <string name="hamburger_menu_switch_to_desktop">Desktop Mode</string>
+
+    <!-- This string is displayed in the tooltip that is displayed when the user hovers the hamburger menu icon -->
+    <string name="hamburger_menu_tooltip">Menu</string>
+
+    <!-- This string is displayed in the title of the Send Tab to device dialog. -->
+    <string name="send_tab_dialog_title">Send Tab to Device</string>
+
+    <!-- This string is displayed in the description of the Send Tab to device dialog. -->
+    <string name="send_tab_dialog_description">Choose a device to send the tab.</string>
+
+    <!-- This string is displayed on top of the available devices list. -->
+    <string name="send_tab_dialog_options_header">Available devices:</string>
+
+    <!-- This string is displayed instead of the devices list if there are no available devices. -->
+    <string name="send_tab_dialog_no_devices">No devices connected.</string>
+
+    <!-- This string is displayed instead of the devices list if the devices list is being synced. -->
+    <string name="send_tab_dialog_syncing">Synchronising...</string>
+
+    <!-- This string is displayed in the button of the Send Tab to device dialog. When clicked the current tab is sent to the selected device -->
+    <string name="send_tab_dialog_button">Send</string>
+
+    <!-- This string is displayed in the header of the what's new dialog that is displayed if the user has updated
+         or updated the app and hasn't signed it yet. -->
+    <string name="whats_new_title_1">Sign in to send tabs</string>
+
+    <!-- This string is displayed in the body of the what's new dialog that is displayed if the user has updated
+         or updated the app and hasn't signed it yet. -->
+    <string name="whats_new_body_1">Sign in or create a new Firefox Account to send tabs from Firefox on your desktop or mobile device to your headset.</string>
+
+    <!-- This string is displayed in the body of the what's new dialog that is displayed if the user has updated
+         or updated the app and hasn't signed it yet. -->
+    <string name="whats_new_body_sub_1">Firefox Account also lets you synchronise bookmarks and history across all your devices.</string>
+
+    <!-- This string is displayed a button of the what's new dialog that is displayed if the user has updated
+         or updated the app and hasn't signed it yet. If clicked the user is redirected to the Firefox Account sign-in page. -->
+    <string name="whats_new_button_sign_in">Sign In</string>
+
+    <!-- This string is displayed a button of the what's new dialog that is displayed if the user has updated
+         or updated the app and hasn't signed it yet. If clicked the dialog is dismissed. -->
+    <string name="whats_new_button_start_browsing">Start Browsing</string>
+
+
+    <!-- This string is displayed in the title of the slow script dialog. -->
+    <string name="slow_script_dialog_title">Slow script</string>
+
+    <!-- This string is displayed as a description below the title of slow script dialog.
+        '%1$s' will be replaced the script filename that is causing the slow down. -->
+    <string name="slow_script_dialog_description">A web page is slowing down your browser (%1$s). What would you like to do?</string>
+
+    <!-- This string is displayed as a button below the slow script dialog description message. When clicked
+        it stops the slow script that is causing the web page slow down. -->
+    <string name="slow_script_dialog_action_stop">Stop it</string>
+
+    <!-- This string is displayed as a button below the slow script dialog description message. When clicked
+       it continues to wait for execution of the web page script that caused the slow down. -->
+    <string name="slow_script_dialog_action_wait">Wait</string>
+</resources>

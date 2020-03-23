@@ -415,7 +415,6 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
 
     private GeckoSession createGeckoSession(@NonNull SessionSettings aSettings) {
         GeckoSessionSettings geckoSettings = new GeckoSessionSettings.Builder()
-                .useMultiprocess(SettingsStore.getInstance(mContext).isMultiprocessEnabled())
                 .usePrivateMode(aSettings.isPrivateBrowsingEnabled())
                 .useTrackingProtection(aSettings.isTrackingProtectionEnabled())
                 .userAgentMode(aSettings.getUserAgentMode())
@@ -545,6 +544,10 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         return BitmapCache.getInstance(mContext).hasBitmap(mState.mId);
     }
 
+    public boolean hasDisplay() {
+        return mState != null && mState.mDisplay != null;
+    }
+
     public void purgeHistory() {
         if (mState.mSession != null) {
             mState.mSession.purgeHistory();
@@ -670,9 +673,9 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         }
     }
 
-    public void reload() {
+    public void reload(final int flags) {
         if (mState.mSession != null) {
-            mState.mSession.reload();
+            mState.mSession.reload(flags);
         }
     }
 
@@ -683,12 +686,16 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
     }
 
     public void loadUri(String aUri) {
+        loadUri(aUri, GeckoSession.LOAD_FLAGS_NONE);
+    }
+
+    public void loadUri(String aUri, int flags) {
         if (aUri == null) {
             aUri = getHomeUri();
         }
         if (mState.mSession != null) {
             Log.d(LOGTAG, "Loading URI: " + aUri);
-            mState.mSession.loadUri(aUri);
+            mState.mSession.loadUri(aUri, flags);
         }
     }
 
@@ -818,12 +825,15 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
             mState.mSettings.setViewportMode(GeckoSessionSettings.VIEWPORT_MODE_MOBILE);
         }
         mState.mSession.getSettings().setViewportMode(mState.mSettings.getViewportMode());
-        mState.mSession.loadUri(overrideUri != null ? overrideUri : mState.mUri, GeckoSession.LOAD_FLAGS_BYPASS_CACHE | GeckoSession.LOAD_FLAGS_REPLACE_HISTORY);
+        if (overrideUri != null) {
+            mState.mSession.loadUri(overrideUri, GeckoSession.LOAD_FLAGS_BYPASS_CACHE | GeckoSession.LOAD_FLAGS_REPLACE_HISTORY);
+        } else {
+            // mState.mSession.reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
+            mState.mSession.loadUri(mState.mUri, GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
+
+        }
     }
 
-    protected void resetMultiprocess() {
-        recreateSession();
-    }
 
     protected void setTrackingProtection(final boolean aEnabled) {
         if (mState.mSettings.isTrackingProtectionEnabled() != aEnabled) {
@@ -965,7 +975,7 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
     }
 
     @Override
-    public GeckoResult<String> onLoadError(@NonNull GeckoSession session, String uri,  @NonNull WebRequestError error) {
+    public GeckoResult<String> onLoadError(@NonNull GeckoSession session, @Nullable String uri,  @NonNull WebRequestError error) {
         Log.d(LOGTAG, "Session onLoadError: " + uri);
 
         return GeckoResult.fromValue(InternalPages.createErrorPageDataURI(mContext, uri, error.code));
@@ -1426,7 +1436,9 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         if (mContext != null) {
             if (key.equals(mContext.getString(R.string.settings_key_geolocation_data))) {
                 GeolocationData data = GeolocationData.parse(sharedPreferences.getString(key, null));
-                setRegion(data.getCountryCode());
+                if (data != null) {
+                    setRegion(data.getCountryCode());
+                }
             }
         }
     }

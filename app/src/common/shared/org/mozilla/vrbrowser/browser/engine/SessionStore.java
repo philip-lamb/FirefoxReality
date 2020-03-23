@@ -211,18 +211,6 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
         }
     }
 
-    public void onPause() {
-        for (Session session: mSessions) {
-            session.setActive(false);
-        }
-    }
-
-    public void onResume() {
-        for (Session session: mSessions) {
-            session.setActive(true);
-        }
-    }
-
     public void onDestroy() {
         for (int i = mSessions.size() - 1; i >= 0; --i) {
             destroySession(mSessions.get(i));
@@ -241,6 +229,8 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
         if (mRuntime != null) {
             mRuntime.configurationChanged(newConfig);
         }
+
+        mBookmarksStore.onConfigurationChanged(newConfig);
     }
 
     // Session Settings
@@ -254,12 +244,6 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
     public void setUaMode(final int mode) {
         for (Session session: mSessions) {
             session.setUaMode(mode);
-        }
-    }
-
-    public void resetMultiprocess() {
-        for (Session session: mSessions) {
-            session.resetMultiprocess();
         }
     }
 
@@ -285,7 +269,7 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
 
     public void setLocales(List<String> locales) {
         if (mRuntime != null) {
-            mRuntime.getSettings().setLocales(locales.stream().toArray(String[]::new));
+            mRuntime.getSettings().setLocales(locales.toArray(new String[0]));
         }
     }
 

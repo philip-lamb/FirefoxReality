@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import androidx.annotation.Dimension;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.databinding.BindingAdapter;
 
 import org.mozilla.vrbrowser.R;
@@ -162,6 +163,36 @@ public class BindingAdapters {
     @BindingAdapter("privateMode")
     public static void setPrivateMode(@NonNull UITextButton button, boolean isPrivateMode) {
         button.setPrivateMode(isPrivateMode);
+    }
+
+    @BindingAdapter("activeMode")
+    public static void setActiveMode(@NonNull UIButton button, boolean isActiveMode) {
+        button.setActiveMode(isActiveMode);
+    }
+
+    @BindingAdapter("notificationMode")
+    public static void setNotificationMode(@NonNull UIButton button, boolean isNotificationMode) {
+        button.setNotificationMode(isNotificationMode);
+    }
+
+    @BindingAdapter("regularModeBackground")
+    public static void setRegularModeBackground(@NonNull UIButton button, @NonNull Drawable drawable) {
+        button.setRegularModeBackground(drawable);
+    }
+
+    @BindingAdapter("privateModeBackground")
+    public static void setPrivateModeBackground(@NonNull UIButton button, @NonNull Drawable drawable) {
+        button.setPrivateModeBackground(drawable);
+    }
+
+    @BindingAdapter("activeModeBackground")
+    public static void setActiveModeBackground(@NonNull UIButton button, @NonNull Drawable drawable) {
+        button.setActiveModeBackground(drawable);
+    }
+
+    @BindingAdapter("android:tooltipText")
+    public static void setTooltipText(@NonNull UIButton button, @Nullable String text){
+        button.setTooltipText(text);
     }
 
  }

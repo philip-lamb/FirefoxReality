@@ -42,6 +42,7 @@
 #include "vrb/NodeFactoryObj.h"
 #include "vrb/ParserObj.h"
 #include "vrb/PerformanceMonitor.h"
+#include "vrb/ProgramFactory.h"
 #include "vrb/RenderContext.h"
 #include "vrb/RenderState.h"
 #include "vrb/SurfaceTextureFactory.h"
@@ -188,6 +189,7 @@ struct BrowserWorld::State {
   std::unordered_map<vrb::Node*, std::pair<Widget*, float>> depthSorting;
   std::function<void(device::Eye)> drawHandler;
   std::function<void()> frameEndHandler;
+  bool wasInGazeMode = false;
   bool videoPassThrough;
   bool videoPassThroughChangedState;
 
@@ -197,6 +199,7 @@ struct BrowserWorld::State {
     context = RenderContext::Create();
     create = context->GetRenderThreadCreationContext();
     loader = ModelLoaderAndroid::Create(context);
+    context->GetProgramFactory()->SetLoaderThread(loader);
     rootOpaque = Transform::Create(create);
     rootTransparent = Transform::Create(create);
     rootController = Group::Create(create);
@@ -216,6 +219,7 @@ struct BrowserWorld::State {
     splashAnimation = SplashAnimation::Create(create);
     monitor = PerformanceMonitor::Create(create);
     monitor->AddPerformanceMonitorObserver(std::make_shared<PerformanceObserver>());
+    wasInGazeMode = false;
 #if defined(WAVEVR)
     monitor->SetPerformanceDelta(15.0);
 #endif
@@ -225,6 +229,7 @@ struct BrowserWorld::State {
   bool CheckExitImmersive();
   void EnsureControllerFocused();
   void ChangeControllerFocus(const Controller& aController);
+  void UpdateGazeModeState();
   void UpdateControllers(bool& aRelayoutWidgets);
   WidgetPtr GetWidget(int32_t aHandle) const;
   WidgetPtr FindWidget(const std::function<bool(const WidgetPtr&)>& aCondition) const;
@@ -338,6 +343,25 @@ ScaleScrollDelta(const float aValue, const double aStartTime, const double aCurr
 }
 
 void
+BrowserWorld::State::UpdateGazeModeState() {
+  bool isInGazeMode = device->IsInGazeMode();
+  if (isInGazeMode != wasInGazeMode) {
+    int32_t gazeIndex = device->GazeModeIndex();
+    if (isInGazeMode && gazeIndex >= 0) {
+      VRB_LOG("Gaze mode ON")
+      controllers->SetEnabled(gazeIndex, true);
+      controllers->SetVisible(gazeIndex, true);
+
+    } else {
+      VRB_LOG("Gaze mode OFF")
+      controllers->SetEnabled(gazeIndex, false);
+      controllers->SetVisible(gazeIndex, false);
+    }
+    wasInGazeMode = isInGazeMode;
+  }
+}
+
+void
 BrowserWorld::State::UpdateControllers(bool& aRelayoutWidgets) {
   EnsureControllerFocused();
   for (Controller& controller: controllers->GetControllers()) {
@@ -362,8 +386,6 @@ BrowserWorld::State::UpdateControllers(bool& aRelayoutWidgets) {
       if (focusRequested) {
         ChangeControllerFocus(controller);
       }
-      controller.lastButtonState = controller.buttonState;
-      continue;
     }
 
     const vrb::Vector start = controller.StartPoint();
@@ -430,7 +452,7 @@ BrowserWorld::State::UpdateControllers(bool& aRelayoutWidgets) {
           aRelayoutWidgets = true;
         }
       }
-    } else if (hitWidget && hitWidget->IsResizing()) {
+    } else if (hitWidget && hitWidget->IsResizing() && controller.focused) {
       bool aResized = false, aResizeEnded = false;
       hitWidget->HandleResize(hitPoint, pressed, aResized, aResizeEnded);
 
@@ -465,8 +487,7 @@ BrowserWorld::State::UpdateControllers(bool& aRelayoutWidgets) {
         controller.widget = handle;
         controller.pointerX = theX;
         controller.pointerY = theY;
-        VRBrowser::HandleMotionEvent(handle, controller.index, jboolean(pressed),
-                                     controller.pointerX, controller.pointerY);
+        VRBrowser::HandleMotionEvent(handle, controller.index, jboolean(controller.focused), jboolean(pressed), controller.pointerX, controller.pointerY);
       }
       if ((controller.scrollDeltaX != 0.0f) || controller.scrollDeltaY != 0.0f) {
         if (controller.scrollStart < 0.0) {
@@ -499,18 +520,18 @@ BrowserWorld::State::UpdateControllers(bool& aRelayoutWidgets) {
         }
       }
     } else if (controller.widget) {
-      VRBrowser::HandleMotionEvent(0, controller.index, (jboolean) pressed, 0.0f, 0.0f);
+      VRBrowser::HandleMotionEvent(0, controller.index, jboolean(controller.focused), (jboolean) pressed, 0.0f, 0.0f);
       controller.widget = 0;
 
     } else if (wasPressed != pressed) {
-      VRBrowser::HandleMotionEvent(0, controller.index, (jboolean) pressed, 0.0f, 0.0f);
+      VRBrowser::HandleMotionEvent(0, controller.index, jboolean(controller.focused), (jboolean) pressed, 0.0f, 0.0f);
     } else if (vrVideo != nullptr) {
       const bool togglePressed = controller.buttonState & ControllerDelegate::BUTTON_X ||
                                  controller.buttonState & ControllerDelegate::BUTTON_A;
       const bool toggleWasPressed = controller.lastButtonState & ControllerDelegate::BUTTON_X ||
                                     controller.lastButtonState & ControllerDelegate::BUTTON_A;
       if (togglePressed != toggleWasPressed) {
-        VRBrowser::HandleMotionEvent(0, controller.index, (jboolean) togglePressed, 0.0f, 0.0f);
+        VRBrowser::HandleMotionEvent(0, controller.index, jboolean(controller.focused), (jboolean) togglePressed, 0.0f, 0.0f);
       }
     }
     controller.lastButtonState = controller.buttonState;
@@ -715,6 +736,7 @@ BrowserWorld::RegisterDeviceDelegate(DeviceDelegatePtr aDelegate) {
     m.leftCamera = m.device->GetCamera(device::Eye::Left);
     m.rightCamera = m.device->GetCamera(device::Eye::Right);
     ControllerDelegatePtr delegate = m.controllers;
+    delegate->SetGazeModeIndex(m.device->GazeModeIndex());
     m.device->SetClipPlanes(m.nearClip, m.farClip);
     m.device->SetControllerDelegate(delegate);
     m.gestures = m.device->GetGestureDelegate();
@@ -906,6 +928,7 @@ BrowserWorld::StartFrame() {
     TickImmersive();
   } else {
     bool relayoutWidgets = false;
+    m.UpdateGazeModeState();
     m.UpdateControllers(relayoutWidgets);
     if (relayoutWidgets) {
       UpdateVisibleWidgets();
@@ -972,12 +995,6 @@ BrowserWorld::UpdateEnvironment() {
 
   VRB_LOG("Setting environment: %s", skyboxPath.c_str());
   CreateSkyBox(skyboxPath, extension);
-}
-
-void
-BrowserWorld::UpdateFoveatedLevel(const int aAppLevel) {
-  ASSERT_ON_RENDER_THREAD();
-  m.device->SetFoveatedLevel(aAppLevel);
 }
 
 void
@@ -1158,7 +1175,7 @@ BrowserWorld::StartWidgetMove(int32_t aHandle, int32_t aMoveBehavour) {
       continue;
     }
 
-    if (controller.pointer && controller.pointer->GetHitWidget() == widget) {
+    if (controller.pointer && controller.focused && controller.pointer->GetHitWidget() == widget) {
       controllerIndex = controller.index;
       start = controller.StartPoint();
       direction = controller.Direction();
@@ -1647,11 +1664,6 @@ JNI_METHOD(void, workaroundGeckoSigAction)
 JNI_METHOD(void, updateEnvironmentNative)
 (JNIEnv*, jobject) {
   crow::BrowserWorld::Instance().UpdateEnvironment();
-}
-
-JNI_METHOD(void, updateFoveatedLevelNative)
-(JNIEnv*, jobject, jint aAppLevel) {
-  crow::BrowserWorld::Instance().UpdateFoveatedLevel(aAppLevel);
 }
 
 JNI_METHOD(void, updatePointerColorNative)

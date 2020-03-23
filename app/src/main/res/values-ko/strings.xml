@@ -141,6 +141,10 @@
          opens a dialog box that contains language-related settings. -->
     <string name="settings_language">언어</string>
 
+    <!-- This string is used to label the first string in the language list for voice and display languages.
+         If chosen the device will use the system language as the main language. -->
+    <string name="settings_language_follow_device">기기 언어 따르기</string>
+
     <!-- This string is used to label a text label for selecting the language in the 'Language' dialog window
          (accessible from the browser's Settings' dialog window). Below this string appears
          the different options for language settings. -->
@@ -187,7 +191,7 @@
     <!-- This string is used to label a text label that appears in the header of 'Language Settings' ->
          'Preferred Language for Displaying Websites' dialog window (accessible from the browser's Settings dialog window).
          Below this string appears a list of locales for the user to choose as their preferred languages for web content. -->
-    <string name="settings_language_choose_language_content_title">웹사이트 기본 언어</string>
+    <string name="settings_language_choose_language_content_title">웹 사이트 기본 언어</string>
 
     <!-- This string is used to label a text label that appears in the header description of 'Language Settings' ->
          'Preferred Language for Displaying Websites' dialog window (accessible from the browser's Settings dialog window).
@@ -330,13 +334,6 @@
     <string name="developer_options_env_override">환경 오버라이드 활성화</string>
 
     <!-- This string labels an On/Off switch in the developer options dialog and is used to toggle
-         running content in a separate process.
-         Multiprocessing: the running of two or more programs or sequences of instructions
-         simultaneously by a computer with more than one central processor.
-         A dialog should appear with a field labeled with the text, 'Enable Multiprocess'. -->
-    <string name="developer_options_multiprocess">멀티 프로세스 활성화</string>
-
-    <!-- This string labels an On/Off switch in the developer options dialog and is used to toggle
          the performance monitor. The Performance monitor is used to detect pages that cause the
          browser to run below a target framerate and pauses the page to restore performance.
     -->
@@ -351,8 +348,15 @@
     <!-- This string labels an On/Off switch in the developer options dialog and is used to toggle
      UI render mode. If enables it uses hardware acceleration which should be faster but it may be more unstable.
      If disabled it uses software rendering which is stable but not as performant as hardware acceleration
--->
+    -->
     <string name="hardware_acceleration_switch">UI 하드웨어 가속 사용</string>
+
+    <!-- This string labels an On/Off switch in the developer options dialog and is used to toggle
+         the behavior of the navigation bar reload button. When enabled, the reloads will bypass
+         the browser cache. This feature is used by web developers when they want to always view
+         the most recent version of a web site.
+    -->
+    <string name="bypass_cache_on_reload_switch">새로 고침시 캐시 무시 활성화</string>
 
     <!-- The string labels an On/Off switch in the developer options dialog and is used to toggle enabling Servo. -->
     <string name="developer_options_servo">서보 활성화</string>
@@ -926,7 +930,7 @@
 
     <!-- This string is displayed is the history context menu that is displayed when
          the more button is pressed in a history item. It removes the selected item from favorites. -->
-    <string name="history_context_remove_bookmarks">북마크에서 삭제</string>
+    <string name="history_context_remove_bookmarks">북마크 삭제</string>
 
     <!-- This string labels the Reset button that restores the default display settings values. -->
     <string name="display_options_reset">디스플레이 설정 초기화</string>
@@ -964,7 +968,7 @@
     <string name="display_language_options_reset">표시 언어 초기화</string>
 
     <!-- This string labels the Reset button that restores the default content language settings values. -->
-    <string name="content_language_options_reset">웹사이트 기본 언어 초기화</string>
+    <string name="content_language_options_reset">웹 사이트 기본 언어 초기화</string>
 
     <!-- This string labels the Reset button that restores all language settings values. -->
     <string name="all_language_options_reset">모든 언어 설정 초기화</string>
@@ -1094,6 +1098,11 @@
     <!-- This string is for the tooltip that appears when the user hovers over the 'Bookmark' icon in the
          browser's navigation bar. The button it labels, when pressed, bookmarks the currently open web site. -->
     <string name="bookmark_tooltip">이 페이지를 북마크</string>
+
+    <!-- This string is for the tooltip that appears when the user hovers over the 'Bookmark' icon in the
+         browser's navigation bar if the site is already bookmarked. The button it labels, when pressed,
+         removes the currently open web site from bookmarks. -->
+    <string name="remove_bookmark_tooltip">북마크 삭제</string>
 
     <!-- This string is for the tooltip that appears when the user hovers over the 'Bookmarks' icon in the
          tray. The button it labels, when pressed, opens a list view of the user's saved

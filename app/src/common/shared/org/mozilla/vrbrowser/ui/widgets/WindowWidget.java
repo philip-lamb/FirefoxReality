@@ -38,6 +38,7 @@ import org.mozilla.geckoview.PanZoomController;
 import org.mozilla.vrbrowser.R;
 import org.mozilla.vrbrowser.VRBrowserActivity;
 import org.mozilla.vrbrowser.VRBrowserApplication;
+import org.mozilla.vrbrowser.browser.BookmarksStore;
 import org.mozilla.vrbrowser.browser.Media;
 import org.mozilla.vrbrowser.browser.PromptDelegate;
 import org.mozilla.vrbrowser.browser.SessionChangeListener;
@@ -133,6 +134,7 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
     private PromptDelegate mPromptDelegate;
     private Executor mUIThreadExecutor;
     private WindowViewModel mViewModel;
+    private CopyOnWriteArrayList<Runnable> mSetViewQueuedCalls;
 
     public interface WindowListener {
         default void onFocusRequest(@NonNull WindowWidget aWindow) {}
@@ -157,6 +159,8 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
     }
 
     private void initialize(Context aContext) {
+        mSetViewQueuedCalls = new CopyOnWriteArrayList<>();
+
         mWidgetManager = (WidgetManagerDelegate) aContext;
         mBorderWidth = SettingsStore.getInstance(aContext).getTransparentBorderWidth();
 
@@ -166,6 +170,7 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
                 ViewModelProvider.AndroidViewModelFactory.getInstance(((VRBrowserActivity) getContext()).getApplication()))
                 .get(String.valueOf(hashCode()), WindowViewModel.class);
         mViewModel.setIsPrivateSession(mSession.isPrivateMode());
+        mViewModel.setUrl(mSession.getCurrentUri());
 
         mUIThreadExecutor = ((VRBrowserApplication)getContext().getApplicationContext()).getExecutors().mainThread();
 
@@ -173,10 +178,12 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
         setupListeners(mSession);
 
         mBookmarksView = new BookmarksView(aContext);
-        mBookmarksView.addBookmarksListener(mBookmarksListener);
+        mBookmarksView.addBookmarksListener(mBookmarksViewListener);
 
         mHistoryView = new HistoryView(aContext);
         mHistoryView.addHistoryListener(mHistoryListener);
+
+        SessionStore.get().getBookmarkStore().addListener(mBookmarksListener);
 
         mHandle = ((WidgetManagerDelegate)aContext).newWidgetHandle();
         mWidgetPlacement = new WidgetPlacement(aContext);
@@ -307,6 +314,11 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
         super.onResume();
         if (isVisible() || mIsInVRVideoMode) {
             mSession.setActive(true);
+            if (!SettingsStore.getInstance(getContext()).getLayersEnabled() && !mSession.hasDisplay()) {
+                // Ensure the Gecko Display is correctly recreated.
+                // See: https://github.com/MozillaReality/FirefoxReality/issues/2880
+                callSurfaceChanged();
+            }
         }
     }
 
@@ -361,32 +373,42 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
     }
 
     private void setView(View view, boolean switchSurface) {
-        if (switchSurface) {
-            pauseCompositor();
-        }
-
-        mView = view;
-        removeView(view);
-        mView.setVisibility(VISIBLE);
-        addView(mView);
-
-        if (switchSurface) {
-            mWidgetPlacement.density = getContext().getResources().getDisplayMetrics().density;
-            if (mTexture != null && mSurface != null && mRenderer == null) {
-                // Create the UI Renderer for the current surface.
-                // Surface must be released when switching back to WebView surface or the browser
-                // will not render it correctly. See release code in unsetView().
-                mRenderer = new UISurfaceTextureRenderer(mSurface, mWidgetPlacement.textureWidth(), mWidgetPlacement.textureHeight());
+        Runnable setView = () -> {
+            if (switchSurface) {
+                pauseCompositor();
             }
-            mWidgetManager.updateWidget(this);
-            mWidgetManager.pushWorldBrightness(this, WidgetManagerDelegate.DEFAULT_DIM_BRIGHTNESS);
-            mWidgetManager.pushBackHandler(mBackHandler);
-            setWillNotDraw(false);
-            postInvalidate();
+
+            mView = view;
+            removeView(view);
+            mView.setVisibility(VISIBLE);
+            addView(mView);
+
+            if (switchSurface) {
+                mWidgetPlacement.density = getContext().getResources().getDisplayMetrics().density;
+                if (mTexture != null && mSurface != null && mRenderer == null) {
+                    // Create the UI Renderer for the current surface.
+                    // Surface must be released when switching back to WebView surface or the browser
+                    // will not render it correctly. See release code in unsetView().
+                    mRenderer = new UISurfaceTextureRenderer(mSurface, mWidgetPlacement.textureWidth(), mWidgetPlacement.textureHeight());
+                }
+                mWidgetManager.updateWidget(WindowWidget.this);
+                mWidgetManager.pushWorldBrightness(WindowWidget.this, WidgetManagerDelegate.DEFAULT_DIM_BRIGHTNESS);
+                mWidgetManager.pushBackHandler(mBackHandler);
+                setWillNotDraw(false);
+                postInvalidate();
+            }
+        };
+
+        if (mAfterFirstPaint) {
+            setView.run();
+
+        } else {
+            mSetViewQueuedCalls.add(setView);
         }
     }
 
     private void unsetView(View view, boolean switchSurface) {
+        mSetViewQueuedCalls.clear();
         if (mView != null && mView == view) {
             mView = null;
             removeView(view);
@@ -404,8 +426,8 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
                     mSurface = new Surface(mTexture);
                 }
                 mWidgetPlacement.density = 1.0f;
-                mWidgetManager.updateWidget(this);
-                mWidgetManager.popWorldBrightness(this);
+                mWidgetManager.updateWidget(WindowWidget.this);
+                mWidgetManager.popWorldBrightness(WindowWidget.this);
                 mWidgetManager.popBackHandler(mBackHandler);
             }
         }
@@ -622,6 +644,12 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
                 session.getTextInput().setView(this);
             }
             mSession.updateLastUse();
+            mWidgetManager.getNavigationBar().addNavigationBarListener(mNavigationBarListener);
+
+        } else {
+            mWidgetManager.getNavigationBar().removeNavigationBarListener(mNavigationBarListener);
+            updateBookmarked();
+
         }
 
         hideContextMenus();
@@ -630,6 +658,16 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
         updateBorder();
 
         mViewModel.setIsActiveWindow(active);
+
+        // Remove tha back handler in case there is a library view visible, otherwise it gets dismissed
+        // when back is clicked even if other window is focused.
+        if (mView != null) {
+            if (active) {
+                mWidgetManager.pushBackHandler(mBackHandler);
+            } else {
+                mWidgetManager.popBackHandler(mBackHandler);
+            }
+        }
     }
 
     @Nullable
@@ -699,7 +737,7 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
     }
 
     private void callSurfaceChanged() {
-        if (mSession != null) {
+        if (mSession != null && mSurface != null) {
             mSession.surfaceChanged(mSurface, mBorderWidth, mBorderWidth, mWidth - mBorderWidth * 2, mHeight - mBorderWidth * 2);
             mSession.updateLastUse();
         }
@@ -898,6 +936,7 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
         cleanListeners(mSession);
         GeckoSession session = mSession.getGeckoSession();
 
+        mSetViewQueuedCalls.clear();
         if (mSession != null) {
             mSession.releaseDisplay();
         }
@@ -913,8 +952,10 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
             mTexture.release();
             mTexture = null;
         }
-        mBookmarksView.removeBookmarksListener(mBookmarksListener);
+        mBookmarksView.removeBookmarksListener(mBookmarksViewListener);
         mHistoryView.removeHistoryListener(mHistoryListener);
+        mWidgetManager.getNavigationBar().removeNavigationBarListener(mNavigationBarListener);
+        SessionStore.get().getBookmarkStore().removeListener(mBookmarksListener);
         mPromptDelegate.detachFromWindow();
         super.releaseWidget();
     }
@@ -1014,6 +1055,8 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
             for (WindowListener listener: mListeners) {
                 listener.onSessionChanged(oldSession, aSession);
             }
+
+
         }
         mCaptureOnPageStop = false;
         hideLibraryPanels();
@@ -1252,6 +1295,10 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
     }
 
     public float getMaxWindowScale() {
+        Windows windows = mWidgetManager.getWindows();
+        if (windows != null) {
+            windows.updateMaxWindowScales();
+        }
         return mMaxWindowScale;
     }
 
@@ -1343,7 +1390,7 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
         });
     }
 
-    private BookmarksCallback mBookmarksListener = new BookmarksCallback() {
+    private BookmarksCallback mBookmarksViewListener = new BookmarksCallback() {
         @Override
         public void onShowContextMenu(@NonNull View view, @NonNull Bookmark item, boolean isLastVisibleItem) {
             showLibraryItemContextMenu(
@@ -1414,6 +1461,60 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
             hideHistory();
         }
     };
+
+    private NavigationBarWidget.NavigationListener mNavigationBarListener = new NavigationBarWidget.NavigationListener() {
+        @Override
+        public void onBack() {
+            hideLibraryPanels();
+        }
+
+        @Override
+        public void onForward() {
+            hideLibraryPanels();
+        }
+
+        @Override
+        public void onReload() {
+            hideLibraryPanels();
+        }
+
+        @Override
+        public void onStop() {
+            // Nothing to do
+        }
+
+        @Override
+        public void onHome() {
+            hideLibraryPanels();
+        }
+    };
+
+    private BookmarksStore.BookmarkListener mBookmarksListener = new BookmarksStore.BookmarkListener() {
+        @Override
+        public void onBookmarksUpdated() {
+            updateBookmarked();
+        }
+
+        @Override
+        public void onBookmarkAdded() {
+            updateBookmarked();
+        }
+    };
+
+    private void updateBookmarked() {
+        SessionStore.get().getBookmarkStore().isBookmarked(mViewModel.getUrl().getValue().toString()).thenAcceptAsync(bookmarked -> {
+            if (bookmarked) {
+                mViewModel.setIsBookmarked(true);
+
+            } else {
+                mViewModel.setIsBookmarked(false);
+            }
+        }, mUIThreadExecutor).exceptionally(throwable -> {
+            Log.d(LOGTAG, "Error checking bookmark: " + throwable.getLocalizedMessage());
+            throwable.printStackTrace();
+            return null;
+        });
+    }
 
     private void hideContextMenus() {
         if (mContextMenu != null) {
@@ -1487,6 +1588,14 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
             mUIThreadExecutor.execute(mFirstDrawCallback);
             mFirstDrawCallback = null;
             mAfterFirstPaint = true;
+            // view queue calls need to be delayed to avoid a deadlock
+            // caused by GeckoSession.syncResumeResizeCompositor()
+            // See: https://github.com/MozillaReality/FirefoxReality/issues/2889
+            mUIThreadExecutor.execute(() -> {
+                mSetViewQueuedCalls.forEach(Runnable::run);
+                mSetViewQueuedCalls.clear();
+            });
+
         }
     }
 
@@ -1614,6 +1723,9 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
             } else {
                 hideLibraryPanels();
             }
+            
+        } else {
+            hideLibraryPanels();
         }
 
         if ("file".equalsIgnoreCase(uri.getScheme()) &&

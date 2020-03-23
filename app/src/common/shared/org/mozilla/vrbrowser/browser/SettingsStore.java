@@ -49,8 +49,8 @@ public class SettingsStore {
     public final static boolean REMOTE_DEBUGGING_DEFAULT = false;
     public final static boolean CONSOLE_LOGS_DEFAULT = false;
     public final static boolean ENV_OVERRIDE_DEFAULT = false;
-    public final static boolean MULTIPROCESS_DEFAULT = false;
     public final static boolean UI_HARDWARE_ACCELERATION_DEFAULT = true;
+    public final static boolean UI_HARDWARE_ACCELERATION_DEFAULT_WAVEVR = false;
     public final static boolean PERFORMANCE_MONITOR_DEFAULT = true;
     public final static boolean DRM_PLAYBACK_DEFAULT = false;
     public final static boolean TRACKING_DEFAULT = true;
@@ -72,8 +72,6 @@ public class SettingsStore {
     public final static int MSAA_DEFAULT_LEVEL = 1;
     public final static boolean AUDIO_ENABLED = false;
     public final static float CYLINDER_DENSITY_ENABLED_DEFAULT = 4680.0f;
-    public final static int FOVEATED_APP_DEFAULT_LEVEL = 0;
-    public final static int FOVEATED_WEBVR_DEFAULT_LEVEL = 0;
     private final static long CRASH_RESTART_DELTA = 2000;
     public final static boolean AUTOPLAY_ENABLED = false;
     public final static boolean DEBUG_LOGGING_DEFAULT = false;
@@ -84,6 +82,7 @@ public class SettingsStore {
     public final static boolean WHATS_NEW_DISPLAYED = false;
     public final static long FXA_LAST_SYNC_NEVER = 0;
     public final static boolean RESTORE_TABS_ENABLED = true;
+    public final static boolean BYPASS_CACHE_ON_RELOAD = false;
     public final static boolean ENVIRONMENT_PASSTHROUGH_ENABLED = false;
 
     // Enable telemetry by default (opt-out).
@@ -228,21 +227,13 @@ public class SettingsStore {
         editor.commit();
     }
 
-
-    public boolean isMultiprocessEnabled() {
-        return mPrefs.getBoolean(
-                mContext.getString(R.string.settings_key_multiprocess_e10s), MULTIPROCESS_DEFAULT);
-    }
-
-    public void setMultiprocessEnabled(boolean isEnabled) {
-        SharedPreferences.Editor editor = mPrefs.edit();
-        editor.putBoolean(mContext.getString(R.string.settings_key_multiprocess_e10s), isEnabled);
-        editor.commit();
-    }
-
     public boolean isUIHardwareAccelerationEnabled() {
+        boolean defaultValue = UI_HARDWARE_ACCELERATION_DEFAULT;
+        if (DeviceType.isWaveBuild()) {
+            defaultValue = UI_HARDWARE_ACCELERATION_DEFAULT_WAVEVR;
+        }
         return mPrefs.getBoolean(
-                mContext.getString(R.string.settings_key_ui_hardware_acceleration), UI_HARDWARE_ACCELERATION_DEFAULT);
+                mContext.getString(R.string.settings_key_ui_hardware_acceleration), defaultValue);
     }
 
     public void setUIHardwareAccelerationEnabled(boolean isEnabled) {
@@ -278,8 +269,13 @@ public class SettingsStore {
     }
 
     public void setUaMode(int mode) {
+        int checkedMode = mode;
+        if ((mode != GeckoSessionSettings.USER_AGENT_MODE_VR) && (mode != GeckoSessionSettings.USER_AGENT_MODE_MOBILE)) {
+            Log.e(LOGTAG, "User agent mode: " + mode + " is not supported.");
+            checkedMode = UA_MODE_DEFAULT;
+        }
         SharedPreferences.Editor editor = mPrefs.edit();
-        editor.putInt(mContext.getString(R.string.settings_key_user_agent_version), mode);
+        editor.putInt(mContext.getString(R.string.settings_key_user_agent_version), checkedMode);
         editor.commit();
     }
 
@@ -481,28 +477,6 @@ public class SettingsStore {
         return getCylinderDensity() > 0;
     }
 
-    public int getFoveatedLevelApp() {
-        return mPrefs.getInt(
-                mContext.getString(R.string.settings_key_foveated_app), FOVEATED_APP_DEFAULT_LEVEL);
-    }
-
-    public int getFoveatedLevelWebVR() {
-        return mPrefs.getInt(
-                mContext.getString(R.string.settings_key_foveated_webvr), FOVEATED_WEBVR_DEFAULT_LEVEL);
-    }
-
-    public void setFoveatedLevelApp(int level) {
-        SharedPreferences.Editor editor = mPrefs.edit();
-        editor.putInt(mContext.getString(R.string.settings_key_foveated_app), level);
-        editor.commit();
-    }
-
-    public void setFoveatedLevelWebVR(int level) {
-        SharedPreferences.Editor editor = mPrefs.edit();
-        editor.putInt(mContext.getString(R.string.settings_key_foveated_webvr), level);
-        editor.commit();
-    }
-
     public void setSelectedKeyboard(Locale aLocale) {
         SharedPreferences.Editor editor = mPrefs.edit();
         editor.putString(mContext.getString(R.string.settings_key_keyboard_locale), aLocale.toLanguageTag());
@@ -678,6 +652,16 @@ public class SettingsStore {
 
     public boolean isRestoreTabsEnabled() {
         return mPrefs.getBoolean(mContext.getString(R.string.settings_key_restore_tabs), RESTORE_TABS_ENABLED);
+    }
+
+    public void setBypassCacheOnReload(boolean isEnabled) {
+        SharedPreferences.Editor editor = mPrefs.edit();
+        editor.putBoolean(mContext.getString(R.string.settings_key_bypass_cache_on_reload),isEnabled);
+        editor.commit();
+    }
+
+    public boolean isBypassCacheOnReloadEnabled() {
+        return mPrefs.getBoolean(mContext.getString(R.string.settings_key_bypass_cache_on_reload), BYPASS_CACHE_ON_RELOAD);
     }
 
     public void setEnvironmentPassthroughEnabled(boolean isEnabled) {

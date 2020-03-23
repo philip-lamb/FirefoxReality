@@ -95,7 +95,6 @@ struct DeviceDelegateOculusVR::State {
   int discardCount = 0;
   uint32_t renderWidth = 0;
   uint32_t renderHeight = 0;
-  int32_t standaloneFoveatedLevel = 0;
   vrb::Color clearColor;
   float near = 0.1f;
   float far = 100.f;
@@ -173,9 +172,6 @@ struct DeviceDelegateOculusVR::State {
     } else if ((type >= VRAPI_DEVICE_TYPE_OCULUSQUEST_START) && (type <= VRAPI_DEVICE_TYPE_OCULUSQUEST_END)) {
       VRB_DEBUG("Detected Oculus Quest");
       deviceType = device::OculusQuest;
-    } else if ((type >= VRAPI_DEVICE_TYPE_GEARVR_START) && (type <= VRAPI_DEVICE_TYPE_GEARVR_END)) {
-      VRB_DEBUG("Detected Gear VR");
-      appId = OCULUS_3DOF_APP_ID;
     } else {
       VRB_DEBUG("Detected Unknown Oculus device");
     }
@@ -203,13 +199,6 @@ struct DeviceDelegateOculusVR::State {
     if (ovr) {
       vrapi_SetTrackingSpace(ovr, VRAPI_TRACKING_SPACE_LOCAL);
     }
-  }
-
-  void UpdateFoveatedLevel() {
-    if (!ovr) {
-      return;
-    }
-    vrapi_SetPropertyInt(&java, VRAPI_FOVEATION_LEVEL, standaloneFoveatedLevel);
   }
 
   void UpdateClockLevels() {
@@ -397,7 +386,7 @@ struct DeviceDelegateOculusVR::State {
         return;
       }
       ovrTracking tracking = {};
-      if (vrapi_GetInputTrackingState(ovr, controllerState.deviceId, 0, &tracking) != ovrSuccess) {
+      if (vrapi_GetInputTrackingState(ovr, controllerState.deviceId, predictedDisplayTime, &tracking) != ovrSuccess) {
         VRB_LOG("Failed to read controller tracking controllerStateList");
         return;
       }
@@ -648,7 +637,6 @@ DeviceDelegateOculusVR::SetRenderMode(const device::RenderMode aMode) {
   }
 
   m.UpdateTrackingMode();
-  m.UpdateFoveatedLevel();
   m.UpdateDisplayRefreshRate();
   m.UpdateClockLevels();
 
@@ -745,12 +733,6 @@ DeviceDelegateOculusVR::SetControllerDelegate(ControllerDelegatePtr& aController
 void
 DeviceDelegateOculusVR::ReleaseControllerDelegate() {
   m.controller = nullptr;
-}
-
-void
-DeviceDelegateOculusVR::SetFoveatedLevel(const int32_t aAppLevel) {
-  m.standaloneFoveatedLevel = aAppLevel;
-  m.UpdateFoveatedLevel();
 }
 
 int32_t
@@ -1193,7 +1175,6 @@ DeviceDelegateOculusVR::EnterVR(const crow::BrowserEGLContext& aEGLContext) {
     m.UpdateDisplayRefreshRate();
     m.UpdateClockLevels();
     m.UpdateTrackingMode();
-    m.UpdateFoveatedLevel();
   }
 
   // Reset reorientation after Enter VR
