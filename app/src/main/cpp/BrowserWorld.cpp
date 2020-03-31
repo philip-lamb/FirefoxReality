@@ -144,7 +144,6 @@ PerformanceObserver::PerformanceRestored(const double& aTargetFrameRate, const d
 } // namespace
 
 namespace crow {
-
 struct BrowserWorld::State {
   BrowserWorldWeakPtr self;
   std::vector<WidgetPtr> widgets;
@@ -752,6 +751,7 @@ void
 BrowserWorld::Pause() {
   ASSERT_ON_RENDER_THREAD();
   m.paused = true;
+  m.externalVR->OnPause();
   m.monitor->Pause();
 }
 
@@ -759,6 +759,7 @@ void
 BrowserWorld::Resume() {
   ASSERT_ON_RENDER_THREAD();
   m.paused = false;
+  m.externalVR->OnResume();
   m.monitor->Resume();
 }
 
@@ -946,7 +947,7 @@ BrowserWorld::EndFrame() {
     m.frameEndHandler();
     m.frameEndHandler = nullptr;
   } else {
-    m.device->EndFrame(false);
+    m.device->EndFrame();
   }
   m.drawHandler = nullptr;
 
@@ -1450,14 +1451,35 @@ BrowserWorld::TickImmersive() {
   m.externalVR->SetCompositorEnabled(false);
   m.device->SetRenderMode(device::RenderMode::Immersive);
 
-  m.device->StartFrame();
+  const bool supportsFrameAhead = m.device->SupportsFramePrediction(DeviceDelegate::FramePrediction::ONE_FRAME_AHEAD);
+  auto framePrediction = DeviceDelegate::FramePrediction::ONE_FRAME_AHEAD;
   VRB_GL_CHECK(glDepthMask(GL_FALSE));
-  m.externalVR->PushFramePoses(m.device->GetHeadTransform(), m.controllers->GetControllers(), m.context->GetTimestamp());
+  if (!supportsFrameAhead || (m.externalVR->GetVRState() != ExternalVR::VRState::Rendering)) {
+      // Do not use one frame ahead prediction if not supported or we are rendering the spinner.
+      framePrediction = DeviceDelegate::FramePrediction::NO_FRAME_AHEAD;
+      m.device->StartFrame(framePrediction);
+      m.externalVR->PushFramePoses(m.device->GetHeadTransform(), m.controllers->GetControllers(),
+                                   m.context->GetTimestamp());
+  }
   int32_t surfaceHandle, textureWidth, textureHeight = 0;
   device::EyeRect leftEye, rightEye;
   bool aDiscardFrame = !m.externalVR->WaitFrameResult();
   m.externalVR->GetFrameResult(surfaceHandle, textureWidth, textureHeight, leftEye, rightEye);
   ExternalVR::VRState state = m.externalVR->GetVRState();
+  if (supportsFrameAhead) {
+      if (framePrediction != DeviceDelegate::FramePrediction::ONE_FRAME_AHEAD) {
+          // StartFrame() has been already called to render the spinner, do not call it again.
+          // Instead, repeat the XR frame and render the spinner while we transition
+          // to one frame ahead prediction.
+          state = ExternalVR::VRState::Loading;
+      } else {
+          // Predict poses for one frame ahead and push the data to shmem so Gecko
+          // can start the next XR RAF ASAP.
+          m.device->StartFrame(framePrediction);
+      }
+      m.externalVR->PushFramePoses(m.device->GetHeadTransform(), m.controllers->GetControllers(),
+              m.context->GetTimestamp());
+  }
   if (state == ExternalVR::VRState::Rendering) {
     if (!aDiscardFrame) {
       if (textureWidth > 0 && textureHeight > 0) {
@@ -1469,7 +1491,7 @@ BrowserWorld::TickImmersive() {
       };
     }
     m.frameEndHandler = [=]() {
-      m.device->EndFrame(aDiscardFrame);
+      m.device->EndFrame(aDiscardFrame ? DeviceDelegate::FrameEndMode::DISCARD : DeviceDelegate::FrameEndMode::APPLY);
       m.blitter->EndFrame();
     };
   } else {
@@ -1522,7 +1544,7 @@ BrowserWorld::TickSplashAnimation() {
       if (m.fadeAnimation) {
         m.fadeAnimation->FadeIn();
       }
-      m.device->EndFrame(false);
+      m.device->EndFrame();
     };
   }
 }

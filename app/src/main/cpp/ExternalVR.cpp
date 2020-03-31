@@ -300,6 +300,12 @@ ExternalVR::SetEyeResolution(const int32_t aWidth, const int32_t aHeight) {
 }
 
 void
+ExternalVR::SetStageSize(const float aWidth, const float aDepth) {
+  m.system.displayState.stageSize.width = aWidth;
+  m.system.displayState.stageSize.height = aDepth;
+}
+
+void
 ExternalVR::SetSittingToStandingTransform(const vrb::Matrix& aTransform) {
   memcpy(&(m.system.displayState.sittingToStandingTransform), aTransform.Data(), sizeof(m.system.displayState.sittingToStandingTransform));
 }
@@ -461,7 +467,7 @@ ExternalVR::WaitFrameResult() {
       // VRB_LOG("RequestFrame BREAK %llu",  m.browser.layerState[0].layer_stereo_immersive.frameId);
       break;
     }
-    if (m.firstPresentingFrame) {
+    if (m.firstPresentingFrame || m.waitingForExit) {
       return true; // Do not block to show loading screen until the first frame arrives.
     }
     // VRB_LOG("RequestFrame ABOUT TO WAIT FOR FRAME %llu %llu",m.browser.layerState[0].layer_stereo_immersive.frameId, m.lastFrameId);
@@ -517,6 +523,28 @@ ExternalVR::SetHapticState(ControllerContainerPtr aControllerContainer) const {
       aControllerContainer->SetHapticFeedback(i, 0, 0.0f, 0.0f);
     }
   }
+}
+
+void
+ExternalVR::OnPause() {
+  if (m.system.displayState.presentingGeneration == 0) {
+    // Do not call PushSystemState() until correctly initialized.
+    // Fixes WebXR Display not found error due to some superfluous pause/resume life cycle events.
+    return;
+  }
+  m.system.displayState.isConnected = false;
+  PushSystemState();
+}
+
+void
+ExternalVR::OnResume() {
+  if (m.system.displayState.presentingGeneration == 0) {
+    // Do not call PushSystemState() until correctly initialized.
+    // Fixes WebXR Display not found error due to some superfluous pause/resume life cycle events.
+    return;
+  }
+  m.system.displayState.isConnected = true;
+  PushSystemState();
 }
 
 void

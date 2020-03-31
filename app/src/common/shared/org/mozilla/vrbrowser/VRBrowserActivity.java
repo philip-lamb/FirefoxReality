@@ -41,6 +41,7 @@ import androidx.lifecycle.LifecycleRegistry;
 import androidx.lifecycle.ViewModelStore;
 import androidx.lifecycle.ViewModelStoreOwner;
 
+import org.json.JSONObject;
 import org.mozilla.geckoview.GeckoRuntime;
 import org.mozilla.geckoview.GeckoSession;
 import org.mozilla.geckoview.GeckoVRManager;
@@ -81,8 +82,10 @@ import org.mozilla.vrbrowser.utils.ConnectivityReceiver.Delegate;
 import org.mozilla.vrbrowser.utils.DeviceType;
 import org.mozilla.vrbrowser.utils.LocaleUtils;
 import org.mozilla.vrbrowser.utils.ServoUtils;
+import org.mozilla.vrbrowser.utils.StringUtils;
 import org.mozilla.vrbrowser.utils.SystemUtils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -97,7 +100,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     private BroadcastReceiver mCrashReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(intent.getAction().equals(CrashReporterService.CRASH_ACTION)) {
+            if((intent.getAction() != null) && intent.getAction().equals(CrashReporterService.CRASH_ACTION)) {
                 Intent crashIntent = intent.getParcelableExtra(CrashReporterService.DATA_TAG);
                 handleContentCrashIntent(crashIntent);
             }
@@ -277,6 +280,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         mAudioUpdateRunnable = () -> mAudioEngine.update();
 
         mSettings = SettingsStore.getInstance(this);
+        mSettings.initModel(this);
 
         queueRunnable(() -> {
             createOffscreenDisplay();
@@ -449,9 +453,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         if (mSettings.isEnvironmentPassthroughEnabled()) {
             setEnvironmentPassthrough(true);
         }
-        mConnectivityListeners.forEach((listener) -> {
-            listener.OnConnectivityChanged(ConnectivityReceiver.isNetworkAvailable(this));
-        });
+        mConnectivityListeners.forEach((listener) -> listener.OnConnectivityChanged(ConnectivityReceiver.isNetworkAvailable(this)));
         mConnectivityReceiver.register(this, mConnectivityDelegate);
 
         // If we're signed-in, poll for any new device events (e.g. received tabs) on activity resume.
@@ -491,7 +493,6 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
         SessionStore.get().onDestroy();
 
-
         super.onDestroy();
         mLifeCycle.setCurrentState(Lifecycle.State.DESTROYED);
         mViewModelStore.clear();
@@ -528,6 +529,26 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     void loadFromIntent(final Intent intent) {
         if (GeckoRuntime.ACTION_CRASHED.equals(intent.getAction())) {
             Log.e(LOGTAG,"Loading from crash Intent");
+        }
+
+        // FIXME https://github.com/MozillaReality/FirefoxReality/issues/3066
+        if (DeviceType.isOculusBuild()) {
+            Bundle bundle = intent.getExtras();
+            if (bundle != null) {
+                String cmd = (String) bundle.get("intent_cmd");
+                if ((cmd != null) && (cmd.length() > 0)) {
+                    try {
+                        JSONObject object = new JSONObject(cmd);
+                        JSONObject launch = object.getJSONObject("ovr_social_launch");
+                        String msg = launch.getString("deeplink_message");
+                        Log.d(LOGTAG, "deeplink message: " + msg);
+                        onAppLink(msg);
+                        return;
+                    } catch (Exception ex) {
+                        Log.e(LOGTAG, "Error parsing deeplink JSON: " + ex.toString());
+                    }
+                }
+            }
         }
 
         Uri uri = intent.getData();
@@ -670,7 +691,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     @Override
     public void onBackPressed() {
         if (mIsPresentingImmersive) {
-            queueRunnable(() -> exitImmersiveNative());
+            queueRunnable(this::exitImmersiveNative);
             return;
         }
         if (mBackHandlers.size() > 0) {
@@ -717,20 +738,23 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         return super.dispatchKeyEvent(event);
     }
 
-    private void exitImmersiveSync() {
-        Runnable exitImmersive = new Runnable() {
-            @Override
-            public void run() {
-                exitImmersiveNative();
-                synchronized(this) {
-                    this.notifyAll();
-                }
+    final Object mWaitLock = new Object();
+
+    final Runnable mExitImmersive = new Runnable() {
+        @Override
+        public void run() {
+            exitImmersiveNative();
+            synchronized(mWaitLock) {
+                mWaitLock.notifyAll();
             }
-        };
-        synchronized (exitImmersive) {
-            queueRunnable(exitImmersive);
+        }
+    };
+
+    private void exitImmersiveSync() {
+        synchronized (mWaitLock) {
+            queueRunnable(mExitImmersive);
             try {
-                exitImmersive.wait();
+                mWaitLock.wait();
             } catch (InterruptedException e) {
                 Log.e(LOGTAG, "Waiting for exit immersive onPause interrupted");
             }
@@ -899,9 +923,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     @Keep
     @SuppressWarnings("unused")
     void handleResize(final int aHandle, final float aWorldWidth, final float aWorldHeight) {
-        runOnUiThread(() -> {
-            mWindows.getFocusedWindow().handleResizeEvent(aWorldWidth, aWorldHeight);
-        });
+        runOnUiThread(() -> mWindows.getFocusedWindow().handleResizeEvent(aWorldWidth, aWorldHeight));
     }
 
     @Keep
@@ -957,16 +979,18 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         GeckoVRManager.setExternalContext(aContext);
     }
 
+    final Object mCompositorLock = new Object();
+
     class PauseCompositorRunnable implements Runnable {
         public boolean done;
         @Override
         public void run() {
-            synchronized (VRBrowserActivity.this) {
+            synchronized (mCompositorLock) {
                 Log.d(LOGTAG, "About to pause Compositor");
                 mWindows.pauseCompositor();
                 Log.d(LOGTAG, "Compositor Paused");
                 done = true;
-                VRBrowserActivity.this.notify();
+                mCompositorLock.notify();
             }
         }
     }
@@ -983,11 +1007,11 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         GleanMetricsService.startImmersive();
         PauseCompositorRunnable runnable = new PauseCompositorRunnable();
 
-        synchronized (this) {
+        synchronized (mCompositorLock) {
             runOnUiThread(runnable);
             while (!runnable.done) {
                 try {
-                    this.wait();
+                    mCompositorLock.wait();
                 } catch (InterruptedException e) {
                     Log.e(LOGTAG, "Waiting for compositor pause interrupted");
                 }
@@ -1010,8 +1034,11 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         GleanMetricsService.stopImmersive();
         Handler handler = new Handler(Looper.getMainLooper());
         handler.postDelayed(() -> {
-            mWindows.resumeCompositor();
-            Log.d(LOGTAG, "Compositor Resumed");
+            if (!mWindows.isPaused()) {
+                Log.d(LOGTAG, "Compositor resume begin");
+                mWindows.resumeCompositor();
+                Log.d(LOGTAG, "Compositor resume end");
+            }
         }, 20);
     }
 
@@ -1049,7 +1076,11 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     @Keep
     @SuppressWarnings("unused")
     String getStorageAbsolutePath() {
-        return getExternalFilesDir(null).getAbsolutePath();
+        final File path = getExternalFilesDir(null);
+        if (path == null) {
+            return "";
+        }
+        return path.getAbsolutePath();
     }
 
     @Keep
@@ -1108,7 +1139,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
                 return;
             }
             WindowWidget window = mWindows.getFocusedWindow();
-            if (window == null) {
+            if (window == null || window.getSession() == null) {
                 return;
             }
             final String originalUri = window.getSession().getCurrentUri();
@@ -1123,6 +1154,25 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
                     window.getSession().loadUri(originalUri);
                 }
             });
+        });
+    }
+
+    @Keep
+    @SuppressWarnings("unused")
+    private void onAppLink(String aJSON) {
+        runOnUiThread(() -> {
+            try {
+                JSONObject object = new JSONObject(aJSON);
+                String uri = object.optString("url");
+                Session session = SessionStore.get().getActiveSession();
+                if (!StringUtils.isEmpty(uri) && session != null) {
+                    session.loadUri(uri);
+                }
+
+            } catch (Exception ex) {
+                Log.e(LOGTAG, "Error parsing app link JSON: " + ex.toString());
+            }
+
         });
     }
 
@@ -1184,6 +1234,7 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         }
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private boolean isWidgetInputEnabled(Widget aWidget) {
         return mActiveDialog == null || aWidget == null || mActiveDialog == aWidget || aWidget instanceof KeyboardWidget;
     }
@@ -1191,6 +1242,9 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     // WidgetManagerDelegate
     @Override
     public void addWidget(Widget aWidget) {
+        if (aWidget == null) {
+            return;
+        }
         mWidgets.put(aWidget.getHandle(), aWidget);
         ((View)aWidget).setVisibility(aWidget.getPlacement().visible ? View.VISIBLE : View.GONE);
         final int handle = aWidget.getHandle();
@@ -1201,6 +1255,9 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
     @Override
     public void updateWidget(final Widget aWidget) {
+        if (aWidget == null) {
+            return;
+        }
         final int handle = aWidget.getHandle();
         final WidgetPlacement clone = aWidget.getPlacement().clone();
         queueRunnable(() -> updateWidgetNative(handle, clone));
@@ -1243,6 +1300,9 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
     @Override
     public void removeWidget(final Widget aWidget) {
+        if (aWidget == null) {
+            return;
+        }
         mWidgets.remove(aWidget.getHandle());
         mWidgetContainer.removeView((View) aWidget);
         aWidget.setFirstPaintReady(false);
@@ -1259,35 +1319,44 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
     @Override
     public void startWidgetResize(final Widget aWidget, float aMaxWidth, float aMaxHeight, float minWidth, float minHeight) {
+        if (aWidget == null) {
+            return;
+        }
         mWindows.enterResizeMode();
         queueRunnable(() -> startWidgetResizeNative(aWidget.getHandle(), aMaxWidth, aMaxHeight, minWidth, minHeight));
     }
 
     @Override
     public void finishWidgetResize(final Widget aWidget) {
+        if (aWidget == null) {
+            return;
+        }
         mWindows.exitResizeMode();
         queueRunnable(() -> finishWidgetResizeNative(aWidget.getHandle()));
     }
 
     @Override
     public void startWidgetMove(final Widget aWidget, @WidgetMoveBehaviourFlags int aMoveBehaviour) {
+        if (aWidget == null) {
+            return;
+        }
         queueRunnable(() -> startWidgetMoveNative(aWidget.getHandle(), aMoveBehaviour));
     }
 
     @Override
     public void finishWidgetMove() {
-        queueRunnable(() -> finishWidgetMoveNative());
+        queueRunnable(this::finishWidgetMoveNative);
     }
 
     @Override
-    public void addUpdateListener(UpdateListener aUpdateListener) {
+    public void addUpdateListener(@NonNull UpdateListener aUpdateListener) {
         if (!mWidgetUpdateListeners.contains(aUpdateListener)) {
             mWidgetUpdateListeners.add(aUpdateListener);
         }
     }
 
     @Override
-    public void removeUpdateListener(UpdateListener aUpdateListener) {
+    public void removeUpdateListener(@NonNull UpdateListener aUpdateListener) {
         mWidgetUpdateListeners.remove(aUpdateListener);
     }
 
@@ -1304,14 +1373,14 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     }
 
     @Override
-    public void addFocusChangeListener(FocusChangeListener aListener) {
+    public void addFocusChangeListener(@NonNull FocusChangeListener aListener) {
         if (!mFocusChangeListeners.contains(aListener)) {
             mFocusChangeListeners.add(aListener);
         }
     }
 
     @Override
-    public void removeFocusChangeListener(FocusChangeListener aListener) {
+    public void removeFocusChangeListener(@NonNull FocusChangeListener aListener) {
         mFocusChangeListeners.remove(aListener);
     }
 
@@ -1341,12 +1410,12 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     }
 
     @Override
-    public void pushBackHandler(Runnable aRunnable) {
+    public void pushBackHandler(@NonNull Runnable aRunnable) {
         mBackHandlers.addLast(aRunnable);
     }
 
     @Override
-    public void popBackHandler(Runnable aRunnable) {
+    public void popBackHandler(@NonNull Runnable aRunnable) {
         mBackHandlers.removeLastOccurrence(aRunnable);
     }
 
@@ -1420,12 +1489,12 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
 
     @Override
     public void updateEnvironment() {
-        queueRunnable(() -> updateEnvironmentNative());
+        queueRunnable(this::updateEnvironmentNative);
     }
 
     @Override
     public void updatePointerColor() {
-        queueRunnable(() -> updatePointerColorNative());
+        queueRunnable(this::updatePointerColorNative);
     }
 
     @Override

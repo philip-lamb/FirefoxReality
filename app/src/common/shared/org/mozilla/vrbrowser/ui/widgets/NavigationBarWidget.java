@@ -11,6 +11,7 @@ import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.preference.PreferenceManager;
+import android.text.Spannable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.Pair;
@@ -36,7 +37,10 @@ import org.mozilla.vrbrowser.browser.PromptDelegate;
 import org.mozilla.vrbrowser.browser.SessionChangeListener;
 import org.mozilla.vrbrowser.browser.SettingsStore;
 import org.mozilla.vrbrowser.browser.engine.Session;
+import org.mozilla.vrbrowser.browser.engine.SessionStore;
+import org.mozilla.vrbrowser.browser.content.TrackingProtectionStore;
 import org.mozilla.vrbrowser.databinding.NavigationBarBinding;
+import org.mozilla.vrbrowser.db.SitePermission;
 import org.mozilla.vrbrowser.search.suggestions.SuggestionsProvider;
 import org.mozilla.vrbrowser.telemetry.TelemetryWrapper;
 import org.mozilla.vrbrowser.ui.viewmodel.TrayViewModel;
@@ -45,6 +49,7 @@ import org.mozilla.vrbrowser.ui.views.NavigationURLBar;
 import org.mozilla.vrbrowser.ui.views.UIButton;
 import org.mozilla.vrbrowser.ui.views.UITextButton;
 import org.mozilla.vrbrowser.ui.widgets.NotificationManager.Notification.NotificationPosition;
+import org.mozilla.vrbrowser.ui.widgets.dialogs.QuickPermissionWidget;
 import org.mozilla.vrbrowser.ui.widgets.dialogs.SelectionActionWidget;
 import org.mozilla.vrbrowser.ui.widgets.dialogs.SendTabDialogWidget;
 import org.mozilla.vrbrowser.ui.widgets.dialogs.VoiceSearchWidget;
@@ -59,6 +64,7 @@ import java.util.ArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.mozilla.vrbrowser.db.SitePermission.SITE_PERMISSION_TRACKING;
 import static org.mozilla.vrbrowser.ui.widgets.menus.VideoProjectionMenuWidget.VIDEO_PROJECTION_NONE;
 
 public class NavigationBarWidget extends UIWidget implements GeckoSession.NavigationDelegate,
@@ -101,10 +107,12 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
     private Media mFullScreenMedia;
     private @VideoProjectionMenuWidget.VideoProjectionFlags int mAutoSelectedProjection = VIDEO_PROJECTION_NONE;
     private HamburgerMenuWidget mHamburgerMenu;
+    private QuickPermissionWidget mQuickPermissionWidget;
     private SendTabDialogWidget mSendTabDialog;
     private int mBlockedCount;
     private Executor mUIThreadExecutor;
     private ArrayList<NavigationListener> mNavigationListeners;
+    private TrackingProtectionStore mTrackingDelegate;
 
     public NavigationBarWidget(Context aContext) {
         super(aContext);
@@ -154,6 +162,8 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
         mSuggestionsProvider = new SuggestionsProvider(getContext());
 
+        mTrackingDelegate = SessionStore.get().getTrackingProtectionStore();
+
         mPrefs = PreferenceManager.getDefaultSharedPreferences(mAppContext);
         mPrefs.registerOnSharedPreferenceChangeListener(this);
     }
@@ -195,13 +205,8 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
             if (mViewModel.getIsLoading().getValue().get()) {
                 getSession().stop();
             } else {
-                if (SettingsStore.getInstance(mAppContext).isBypassCacheOnReloadEnabled()) {
-                    getSession().loadUri(getSession().getCurrentUri(), GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
-                } else {
-                    // int flags = SettingsStore.getInstance(mAppContext).isBypassCacheOnReloadEnabled() ? GeckoSession.LOAD_FLAGS_BYPASS_CACHE : GeckoSession.LOAD_FLAGS_NONE;
-                    // getSession().reload(flags);
-                    getSession().reload(GeckoSession.LOAD_FLAGS_NONE);
-                }
+                int flags = SettingsStore.getInstance(mAppContext).isBypassCacheOnReloadEnabled() ? GeckoSession.LOAD_FLAGS_BYPASS_CACHE : GeckoSession.LOAD_FLAGS_NONE;
+                getSession().reload(flags);
             }
             if (mAudio != null) {
                 mAudio.playSound(AudioEngine.Sound.CLICK);
@@ -214,8 +219,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
             if (mViewModel.getIsLoading().getValue().get()) {
                 getSession().stop();
             } else {
-                // getSession().reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
-                getSession().loadUri(getSession().getCurrentUri(), GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
+                getSession().reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
             }
             if (mAudio != null) {
                 mAudio.playSound(AudioEngine.Sound.CLICK);
@@ -364,6 +368,19 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
         }
     }
 
+    TrackingProtectionStore.TrackingProtectionListener mTrackingListener = new TrackingProtectionStore.TrackingProtectionListener() {
+        @Override
+        public void onExcludedTrackingProtectionChange(@NonNull String host, boolean excluded) {
+            Session currentSession = getSession();
+            if (currentSession != null) {
+                String existingHost = UrlUtils.getHost(currentSession.getCurrentUri());
+                if (existingHost.equals(host)) {
+                    mViewModel.setIsTrackingEnabled(!excluded);
+                }
+            }
+        }
+    };
+
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
@@ -398,7 +415,6 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
                 getSession().exitFullScreen();
             }
             mAttachedWindow.restoreBeforeFullscreenPlacement();
-            mAttachedWindow.setIsFullScreen(false);
             mWidgetManager.popBackHandler(mFullScreenBackHandler);
         }
 
@@ -460,8 +476,12 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
         mBinding.navigationBarNavigation.urlBar.detachFromWindow();
 
+        mTrackingDelegate.removeListener(mTrackingListener);
+
         if (mViewModel != null) {
             mViewModel.getIsFullscreen().removeObserver(mIsFullscreenObserver);
+            mViewModel.getIsActiveWindow().removeObserver(mIsActiveWindowObserver);
+            mViewModel.getUrl().removeObserver(mUrlObserver);
             mViewModel = null;
         }
     }
@@ -483,8 +503,12 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
         mBinding.setViewmodel(mViewModel);
 
-        mViewModel.getIsFullscreen().observe((VRBrowserActivity)getContext(), mIsFullscreenObserver);
+        mViewModel.getIsFullscreen().observeForever( mIsFullscreenObserver);
+        mViewModel.getIsActiveWindow().observeForever(mIsActiveWindowObserver);
+        mViewModel.getUrl().observeForever(mUrlObserver);
         mBinding.navigationBarNavigation.urlBar.attachToWindow(mAttachedWindow);
+
+        mTrackingDelegate.addListener(mTrackingListener);
 
         mAttachedWindow.addWindowListener(this);
         mAttachedWindow.setPopUpDelegate(mPopUpDelegate);
@@ -532,7 +556,7 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
     private void enterFullScreenMode() {
         mWidgetManager.pushBackHandler(mFullScreenBackHandler);
-        mAttachedWindow.setIsFullScreen(true);
+
         AnimationHelper.fadeIn(mBinding.navigationBarFullscreen.fullScreenModeContainer, AnimationHelper.FADE_ANIMATION_DURATION, null);
 
         AnimationHelper.fadeOut(mBinding.navigationBarNavigation.navigationBarContainer, 0, null);
@@ -585,7 +609,6 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
         mWidgetManager.updateWidget(mAttachedWindow);
 
-        mAttachedWindow.setIsFullScreen(false);
         mWidgetManager.popBackHandler(mFullScreenBackHandler);
 
         AnimationHelper.fadeIn(mBinding.navigationBarNavigation.navigationBarContainer, AnimationHelper.FADE_ANIMATION_DURATION, null);
@@ -649,7 +672,6 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
         // Update preset styles
     }
-
 
     enum ResizeAction {
         KEEP_SIZE,
@@ -775,16 +797,10 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
     // Content delegate
 
-    @Override
-    public void onFullScreen(@NonNull GeckoSession session, boolean aFullScreen) {
-        mViewModel.setIsFullscreen(aFullScreen);
-    }
-
     private Observer<ObservableBoolean> mIsFullscreenObserver = isFullScreen -> {
         if (isFullScreen.get()) {
-            if (!mAttachedWindow.isFullScreen()) {
-                enterFullScreenMode();
-            }
+            enterFullScreenMode();
+
             if (mAttachedWindow.isResizing()) {
                 exitResizeMode(ResizeAction.KEEP_SIZE);
             }
@@ -806,6 +822,30 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
             exitFullScreenMode();
         }
     };
+
+    private Observer<Spannable> mUrlObserver = sitePermissions -> updateTrackingProtection();
+
+    private Observer<ObservableBoolean> mIsActiveWindowObserver = aIsActiveWindow -> updateTrackingProtection();
+
+    private void updateTrackingProtection() {
+        if (getSession() != null) {
+            mTrackingDelegate.contains(getSession(), isExcluded -> {
+                if (isExcluded != null) {
+                    mViewModel.setIsTrackingEnabled(!isExcluded);
+                }
+
+                return null;
+            });
+
+            mTrackingDelegate.fetchAll(sitePermissions -> {
+                Log.d(LOGTAG, "Start");
+                sitePermissions.forEach(site -> Log.d(LOGTAG, site.url + " - " + site.allowed));
+                Log.d(LOGTAG, "End");
+
+                return null;
+            });
+        }
+    }
 
     // WidgetManagerDelegate.UpdateListener
     @Override
@@ -915,6 +955,20 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
     @Override
     public void onPopUpButtonClicked() {
         mAttachedWindow.showPopUps();
+    }
+
+    @Override
+    public void onWebXRButtonClicked() {
+        toggleQuickPermission(mBinding.navigationBarNavigation.urlBar.getWebxRButton(),
+                SitePermission.SITE_PERMISSION_WEBXR,
+                mViewModel.getIsWebXRBlocked().getValue().get());
+    }
+
+    @Override
+    public void onTrackingButtonClicked() {
+        toggleQuickPermission(mBinding.navigationBarNavigation.urlBar.getTrackingRButton(),
+                SitePermission.SITE_PERMISSION_TRACKING,
+                mViewModel.getIsTrackingEnabled().getValue().get());
     }
 
     // VoiceSearch Delegate
@@ -1145,6 +1199,9 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
 
     public void hideAllNotifications() {
         NotificationManager.hideAll();
+        if (mQuickPermissionWidget != null && mQuickPermissionWidget.isVisible()) {
+            mQuickPermissionWidget.hide(KEEP_WIDGET);
+        }
     }
 
     private void hideNotification(int notificationId) {
@@ -1157,4 +1214,52 @@ public class NavigationBarWidget extends UIWidget implements GeckoSession.Naviga
         }
     };
 
+    private void toggleQuickPermission(UIButton target, @SitePermission.Category int aCategory, boolean aBlocked) {
+        if (mQuickPermissionWidget == null) {
+            mQuickPermissionWidget = new QuickPermissionWidget(getContext());
+        }
+
+        if (mQuickPermissionWidget.isVisible() && mQuickPermissionWidget.getCategory() == aCategory) {
+            mQuickPermissionWidget.hide(KEEP_WIDGET);
+            return;
+        }
+
+        String uri = UrlUtils.getHost(mAttachedWindow.getSession().getCurrentUri());
+        mQuickPermissionWidget.setData(uri, aCategory, aBlocked);
+        mQuickPermissionWidget.setDelegate(new QuickPermissionWidget.Delegate() {
+            @Override
+            public void onBlock() {
+                if (aCategory == SITE_PERMISSION_TRACKING) {
+                    if (getSession() != null) {
+                        mTrackingDelegate.remove(getSession());
+                    }
+
+                } else {
+                    SessionStore.get().setPermissionAllowed(uri, aCategory, false);
+                }
+                mQuickPermissionWidget.onDismiss();
+            }
+
+            @Override
+            public void onAllow() {
+                if (aCategory == SITE_PERMISSION_TRACKING) {
+                    if (getSession() != null) {
+                        mTrackingDelegate.add(getSession());
+                    }
+
+                } else {
+                    SessionStore.get().setPermissionAllowed(uri, aCategory, true);
+                }
+                mQuickPermissionWidget.onDismiss();
+            }
+        });
+        mQuickPermissionWidget.getPlacement().parentHandle = getHandle();
+        // Place the dialog on top of the target button
+        Rect offsetViewBounds = new Rect();
+        target.getDrawingRect(offsetViewBounds);
+        offsetDescendantRectToMyCoords(target, offsetViewBounds);
+        float x = offsetViewBounds.left + (offsetViewBounds.right - offsetViewBounds.left) * 0.5f;
+        mQuickPermissionWidget.getPlacement().parentAnchorX = x / getWidth();
+        mQuickPermissionWidget.show(REQUEST_FOCUS);
+    }
 }

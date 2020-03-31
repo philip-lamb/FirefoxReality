@@ -24,10 +24,12 @@ public abstract class SettingsView extends FrameLayout {
         DISPLAY,
         PRIVACY,
         POPUP_EXCEPTIONS,
+        WEBXR_EXCEPTIONS,
         DEVELOPER,
         FXA,
         ENVIRONMENT,
-        CONTROLLER
+        CONTROLLER,
+        TRACKING_EXCEPTION
     }
 
     protected Delegate mDelegate;

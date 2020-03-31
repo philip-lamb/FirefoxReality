@@ -45,6 +45,7 @@ import org.mozilla.vrbrowser.browser.SessionChangeListener;
 import org.mozilla.vrbrowser.browser.SettingsStore;
 import org.mozilla.vrbrowser.browser.VideoAvailabilityListener;
 import org.mozilla.vrbrowser.browser.engine.Session;
+import org.mozilla.vrbrowser.browser.engine.SessionState;
 import org.mozilla.vrbrowser.browser.engine.SessionStore;
 import org.mozilla.vrbrowser.telemetry.GleanMetricsService;
 import org.mozilla.vrbrowser.telemetry.TelemetryWrapper;
@@ -82,7 +83,8 @@ import static org.mozilla.vrbrowser.utils.ServoUtils.isInstanceOfServoSession;
 
 public class WindowWidget extends UIWidget implements SessionChangeListener,
         GeckoSession.ContentDelegate, GeckoSession.NavigationDelegate, VideoAvailabilityListener,
-        GeckoSession.HistoryDelegate, GeckoSession.ProgressDelegate, GeckoSession.SelectionActionDelegate {
+        GeckoSession.HistoryDelegate, GeckoSession.ProgressDelegate, GeckoSession.SelectionActionDelegate,
+        Session.WebXRStateChangedListener {
 
     @IntDef(value = { SESSION_RELEASE_DISPLAY, SESSION_DO_NOT_RELEASE_DISPLAY})
     public @interface OldSessionDisplayAction {}
@@ -128,7 +130,6 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
     private WidgetPlacement mPlacementBeforeFullscreen;
     private WidgetPlacement mPlacementBeforeResize;
     private boolean mIsResizing;
-    private boolean mIsFullScreen;
     private boolean mAfterFirstPaint;
     private boolean mCaptureOnPageStop;
     private PromptDelegate mPromptDelegate;
@@ -190,7 +191,6 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
         mPlacementBeforeFullscreen = new WidgetPlacement(aContext);
         mPlacementBeforeResize = new WidgetPlacement(aContext);
         mIsResizing = false;
-        mIsFullScreen = false;
         initializeWidgetPlacement(mWidgetPlacement);
         if (mSession.isPrivateMode()) {
             mWidgetPlacement.clearColor = ViewUtils.ARGBtoRGBA(getContext().getColor(R.color.window_private_clear_color));
@@ -244,6 +244,7 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
         aSession.addProgressListener(this);
         aSession.setHistoryDelegate(this);
         aSession.addSelectionActionListener(this);
+        aSession.addWebXRStateChangedListener(this);
     }
 
     void cleanListeners(Session aSession) {
@@ -254,6 +255,7 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
         aSession.removeProgressListener(this);
         aSession.setHistoryDelegate(null);
         aSession.removeSelectionActionListener(this);
+        aSession.removeWebXRStateChangedListener(this);
     }
 
     @Override
@@ -885,8 +887,7 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
     }
 
     public void setIsFullScreen(boolean isFullScreen) {
-        if (isFullScreen != mIsFullScreen) {
-            mIsFullScreen = isFullScreen;
+        if (mViewModel.getIsFullscreen().getValue().get() != isFullScreen) {
             mViewModel.setIsFullscreen(isFullScreen);
             for (WindowListener listener: mListeners) {
                 listener.onFullScreen(this, isFullScreen);
@@ -895,7 +896,7 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
     }
 
     public boolean isFullScreen() {
-        return mIsFullScreen;
+        return mViewModel.getIsFullscreen().getValue().get();
     }
 
     public void addWindowListener(WindowListener aListener) {
@@ -1551,6 +1552,11 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
     // GeckoSession.ContentDelegate
 
     @Override
+    public void onFullScreen(@NonNull GeckoSession session, boolean aFullScreen) {
+        setIsFullScreen(aFullScreen);
+    }
+
+    @Override
     public void onContextMenu(GeckoSession session, int screenX, int screenY, ContextElement element) {
         if (element.type == ContextElement.TYPE_VIDEO) {
             return;
@@ -1945,4 +1951,10 @@ public class WindowWidget extends UIWidget implements SessionChangeListener,
         hideContextMenus();
     }
 
+    // WebXRStateChangedListener
+    @Override
+    public void onWebXRStateChanged(Session aSession, @SessionState.WebXRState int aWebXRState) {
+        mViewModel.setIsWebXRBlocked(aWebXRState == SessionState.WEBXR_BLOCKED);
+        mViewModel.setIsWebXRUsed(aWebXRState != SessionState.WEBXR_UNUSED);
+    }
 }

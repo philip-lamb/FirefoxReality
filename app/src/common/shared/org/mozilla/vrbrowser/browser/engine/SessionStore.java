@@ -16,13 +16,16 @@ import org.mozilla.vrbrowser.browser.BookmarksStore;
 import org.mozilla.vrbrowser.browser.HistoryStore;
 import org.mozilla.vrbrowser.browser.PermissionDelegate;
 import org.mozilla.vrbrowser.browser.Services;
+import org.mozilla.vrbrowser.browser.content.TrackingProtectionStore;
+import org.mozilla.vrbrowser.db.SitePermission;
 import org.mozilla.vrbrowser.utils.SystemUtils;
+import org.mozilla.vrbrowser.utils.UrlUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-public class SessionStore implements GeckoSession.PermissionDelegate {
+public class SessionStore implements GeckoSession.PermissionDelegate{
     private static final String LOGTAG = SystemUtils.createLogtag(SessionStore.class);
     private static final int MAX_GECKO_SESSIONS = 5;
 
@@ -44,6 +47,7 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
     private HistoryStore mHistoryStore;
     private Services mServices;
     private boolean mSuspendPending;
+    private TrackingProtectionStore mTrackingProtectionStore;
 
     private SessionStore() {
         mSessions = new ArrayList<>();
@@ -56,6 +60,24 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
         SessionUtils.vrPrefsWorkAround(context, aExtras);
 
         mRuntime = EngineProvider.INSTANCE.getOrCreateRuntime(context);
+
+        mTrackingProtectionStore = new TrackingProtectionStore(context, mRuntime);
+        mTrackingProtectionStore.addListener(new TrackingProtectionStore.TrackingProtectionListener() {
+            @Override
+            public void onExcludedTrackingProtectionChange(@NonNull String host, boolean excluded) {
+                mSessions.forEach(existingSession -> {
+                    String existingHost = UrlUtils.getHost(existingSession.getCurrentUri());
+                    if (existingHost.equals(host)) {
+                        existingSession.recreateSession();
+                    }
+                });
+            }
+
+            @Override
+            public void onTrackingProtectionLevelUpdated(int level) {
+                mSessions.forEach(Session::recreateSession);
+            }
+        });
     }
 
     public void initializeServices() {
@@ -136,6 +158,10 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
         return mSessions.stream().filter(session -> session.getId().equals(aId)).findFirst().orElse(null);
     }
 
+    public @Nullable Session getSession(GeckoSession aGeckoSession) {
+        return mSessions.stream().filter(session -> session.getGeckoSession() == aGeckoSession).findFirst().orElse(null);
+    }
+
     public void setActiveSession(Session aSession) {
         if (aSession != null) {
             aSession.setActive(true);
@@ -205,6 +231,10 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
         return mHistoryStore;
     }
 
+    public TrackingProtectionStore getTrackingProtectionStore() {
+        return mTrackingProtectionStore;
+    }
+
     public void purgeSessionHistory() {
         for (Session session: mSessions) {
             session.purgeHistory();
@@ -238,18 +268,6 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
     public void setServo(final boolean enabled) {
         for (Session session: mSessions) {
             session.setServo(enabled);
-        }
-    }
-
-    public void setUaMode(final int mode) {
-        for (Session session: mSessions) {
-            session.setUaMode(mode);
-        }
-    }
-
-    public void setTrackingProtection(final boolean aEnabled) {
-        for (Session session: mSessions) {
-            session.setTrackingProtection(aEnabled);
         }
     }
 
@@ -309,6 +327,12 @@ public class SessionStore implements GeckoSession.PermissionDelegate {
     public void onMediaPermissionRequest(@NonNull GeckoSession session, @NonNull String uri, @Nullable MediaSource[] video, @Nullable MediaSource[] audio, @NonNull MediaCallback callback) {
         if (mPermissionDelegate != null) {
             mPermissionDelegate.onMediaPermissionRequest(session, uri, video, audio, callback);
+        }
+    }
+
+    public void setPermissionAllowed(String uri, @SitePermission.Category int category, boolean allowed) {
+        if (mPermissionDelegate != null) {
+            mPermissionDelegate.setPermissionAllowed(uri, category, allowed);
         }
     }
 }

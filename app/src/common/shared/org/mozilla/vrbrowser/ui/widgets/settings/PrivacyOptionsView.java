@@ -22,11 +22,15 @@ import org.mozilla.geckoview.GeckoSession;
 import org.mozilla.geckoview.StorageController;
 import org.mozilla.vrbrowser.R;
 import org.mozilla.vrbrowser.browser.SettingsStore;
+import org.mozilla.vrbrowser.browser.engine.SessionState;
 import org.mozilla.vrbrowser.browser.engine.SessionStore;
 import org.mozilla.vrbrowser.databinding.OptionsPrivacyBinding;
+import org.mozilla.vrbrowser.db.SitePermission;
+import org.mozilla.vrbrowser.ui.views.settings.RadioGroupSetting;
 import org.mozilla.vrbrowser.ui.views.settings.SwitchSetting;
 import org.mozilla.vrbrowser.ui.widgets.WidgetManagerDelegate;
 import org.mozilla.vrbrowser.ui.widgets.WidgetPlacement;
+import org.mozilla.vrbrowser.ui.widgets.WindowWidget;
 import org.mozilla.vrbrowser.utils.DeviceType;
 
 import java.util.ArrayList;
@@ -102,13 +106,10 @@ class PrivacyOptionsView extends SettingsView {
 
         mBinding.drmContentPlaybackSwitch.setOnCheckedChangeListener(mDrmContentListener);
         mBinding.drmContentPlaybackSwitch.setLinkClickListener((widget, url) -> {
-            SessionStore.get().getActiveSession().loadUri(url);
+            mWidgetManager.openNewTabForeground(url);
             exitWholeSettings();
         });
         setDrmContent(SettingsStore.getInstance(getContext()).isDrmContentPlaybackEnabled(), false);
-
-        mBinding.trackingProtectionSwitch.setOnCheckedChangeListener(mTrackingProtectionListener);
-        setTrackingProtection(SettingsStore.getInstance(getContext()).isTrackingProtectionEnabled(), false);
 
         mBinding.notificationsPermissionSwitch.setOnCheckedChangeListener(mNotificationsListener);
         setNotifications(SettingsStore.getInstance(getContext()).isNotificationsEnabled(), false);
@@ -129,6 +130,20 @@ class PrivacyOptionsView extends SettingsView {
 
         mBinding.restoreTabsSwitch.setOnCheckedChangeListener(mRestoreTabsListener);
         setRestoreTabs(SettingsStore.getInstance(getContext()).isRestoreTabsEnabled(), false);
+
+        mBinding.webxrSwitch.setOnCheckedChangeListener(mWebXRListener);
+        setWebXR(SettingsStore.getInstance(getContext()).isWebXREnabled(), false);
+        mBinding.webxrExceptionsButton.setOnClickListener(v -> mDelegate.showView(SettingViewType.WEBXR_EXCEPTIONS));
+
+        mBinding.trackingProtectionButton.setOnClickListener(v -> mDelegate.showView(SettingViewType.TRACKING_EXCEPTION));
+        mBinding.trackingProtectionButton.setDescription(getResources().getString(R.string.privacy_options_tracking, getResources().getString(R.string.sumo_etp_url)));
+        mBinding.trackingProtectionButton.setLinkClickListener((widget, url) -> {
+            mWidgetManager.openNewTabForeground(url);
+            exitWholeSettings();
+        });
+        int etpLevel = SettingsStore.getInstance(getContext()).getTrackingProtectionLevel();
+        mBinding.trackingProtectionRadio.setOnCheckedChangeListener(mTrackingProtectionListener);
+        setTrackingProtection(mBinding.trackingProtectionRadio.getIdForValue(etpLevel), false);
     }
 
     private void togglePermission(SwitchSetting aButton, String aPermission) {
@@ -154,8 +169,8 @@ class PrivacyOptionsView extends SettingsView {
         setDrmContent(value, doApply);
     };
 
-    private SwitchSetting.OnCheckedChangeListener mTrackingProtectionListener = (compoundButton, value, doApply) -> {
-        setTrackingProtection(value, doApply);
+    private RadioGroupSetting.OnCheckedChangeListener mTrackingProtectionListener = (radioGroup, checkedId, doApply) -> {
+        setTrackingProtection(checkedId, true);
     };
 
     private SwitchSetting.OnCheckedChangeListener mNotificationsListener = (compoundButton, value, doApply) -> {
@@ -182,13 +197,17 @@ class PrivacyOptionsView extends SettingsView {
         setRestoreTabs(value, doApply);
     };
 
+    private SwitchSetting.OnCheckedChangeListener mWebXRListener = (compoundButton, value, doApply) -> {
+        setWebXR(value, doApply);
+    };
+
     private void resetOptions() {
         if (mBinding.drmContentPlaybackSwitch.isChecked() != SettingsStore.DRM_PLAYBACK_DEFAULT) {
             setDrmContent(SettingsStore.DRM_PLAYBACK_DEFAULT, true);
         }
 
-        if (mBinding.trackingProtectionSwitch.isChecked() != SettingsStore.TRACKING_DEFAULT) {
-            setTrackingProtection(SettingsStore.TRACKING_DEFAULT, true);
+        if (!mBinding.trackingProtectionRadio.getValueForId(mBinding.trackingProtectionRadio.getCheckedRadioButtonId()).equals(SettingsStore.MSAA_DEFAULT_LEVEL)) {
+            setTrackingProtection(mBinding.trackingProtectionRadio.getIdForValue(SettingsStore.TRACKING_DEFAULT), true);
         }
 
         if (mBinding.notificationsPermissionSwitch.isChecked() != SettingsStore.NOTIFICATIONS_DEFAULT) {
@@ -214,6 +233,10 @@ class PrivacyOptionsView extends SettingsView {
         if (mBinding.restoreTabsSwitch.isChecked() != SettingsStore.RESTORE_TABS_ENABLED) {
             setRestoreTabs(SettingsStore.RESTORE_TABS_ENABLED, true);
         }
+
+        if (mBinding.webxrSwitch.isChecked() != SettingsStore.WEBXR_ENABLED_DEFAULT) {
+            setWebXR(SettingsStore.WEBXR_ENABLED_DEFAULT, true);
+        }
     }
 
     private void setDrmContent(boolean value, boolean doApply) {
@@ -227,14 +250,13 @@ class PrivacyOptionsView extends SettingsView {
         }
     }
 
-    private void setTrackingProtection(boolean value, boolean doApply) {
-        mBinding.trackingProtectionSwitch.setOnCheckedChangeListener(null);
-        mBinding.trackingProtectionSwitch.setValue(value, false);
-        mBinding.trackingProtectionSwitch.setOnCheckedChangeListener(mTrackingProtectionListener);
+    private void setTrackingProtection(int checkedId, boolean doApply) {
+        mBinding.trackingProtectionRadio.setOnCheckedChangeListener(null);
+        mBinding.trackingProtectionRadio.setChecked(checkedId, false);
+        mBinding.trackingProtectionRadio.setOnCheckedChangeListener(mTrackingProtectionListener);
 
         if (doApply) {
-            SettingsStore.getInstance(getContext()).setTrackingProtectionEnabled(value);
-            SessionStore.get().setTrackingProtection(value);
+            SettingsStore.getInstance(getContext()).setTrackingProtectionLevel((Integer)mBinding.trackingProtectionRadio.getValueForId(checkedId));
         }
     }
 
@@ -295,6 +317,19 @@ class PrivacyOptionsView extends SettingsView {
 
         if (doApply) {
             SettingsStore.getInstance(getContext()).setRestoreTabsEnabled(value);
+        }
+    }
+
+    private void setWebXR(boolean value, boolean doApply) {
+        mBinding.webxrSwitch.setOnCheckedChangeListener(null);
+        mBinding.webxrSwitch.setValue(value, false);
+        mBinding.webxrSwitch.setOnCheckedChangeListener(mWebXRListener);
+
+        if (doApply) {
+            SettingsStore.getInstance(getContext()).setWebXREnabled(value);
+            for (WindowWidget window: mWidgetManager.getWindows().getCurrentWindows()) {
+                window.getSession().reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
+            }
         }
     }
 

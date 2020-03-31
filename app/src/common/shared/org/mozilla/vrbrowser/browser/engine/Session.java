@@ -37,6 +37,8 @@ import org.mozilla.vrbrowser.browser.SessionChangeListener;
 import org.mozilla.vrbrowser.browser.SettingsStore;
 import org.mozilla.vrbrowser.browser.UserAgentOverride;
 import org.mozilla.vrbrowser.browser.VideoAvailabilityListener;
+import org.mozilla.vrbrowser.browser.content.TrackingProtectionPolicy;
+import org.mozilla.vrbrowser.browser.content.TrackingProtectionStore;
 import org.mozilla.vrbrowser.geolocation.GeolocationData;
 import org.mozilla.vrbrowser.telemetry.GleanMetricsService;
 import org.mozilla.vrbrowser.telemetry.TelemetryWrapper;
@@ -74,6 +76,7 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
     private transient CopyOnWriteArrayList<VideoAvailabilityListener> mVideoAvailabilityListeners;
     private transient CopyOnWriteArrayList<BitmapChangedListener> mBitmapChangedListeners;
     private transient CopyOnWriteArrayList<GeckoSession.SelectionActionDelegate> mSelectionActionListeners;
+    private transient CopyOnWriteArrayList<WebXRStateChangedListener> mWebXRStateListeners;
 
     private SessionState mState;
     private transient CopyOnWriteArrayList<Runnable> mQueuedCalls = new CopyOnWriteArrayList<>();
@@ -89,6 +92,10 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
 
     public interface BitmapChangedListener {
         void onBitmapChanged(Session aSession, Bitmap aBitmap);
+    }
+
+    public interface WebXRStateChangedListener {
+        void onWebXRStateChanged(Session aSession, @SessionState.WebXRState int aWebXRState);
     }
 
     @IntDef(value = { SESSION_OPEN, SESSION_DO_NOT_OPEN})
@@ -121,6 +128,7 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         mVideoAvailabilityListeners = new CopyOnWriteArrayList<>();
         mSelectionActionListeners = new CopyOnWriteArrayList<>();
         mBitmapChangedListeners = new CopyOnWriteArrayList<>();
+        mWebXRStateListeners = new CopyOnWriteArrayList<>();
 
         if (mPrefs != null) {
             mPrefs.registerOnSharedPreferenceChangeListener(this);
@@ -165,6 +173,7 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         mVideoAvailabilityListeners.clear();
         mSelectionActionListeners.clear();
         mBitmapChangedListeners.clear();
+        mWebXRStateListeners.clear();
 
         if (mPrefs != null) {
             mPrefs.unregisterOnSharedPreferenceChangeListener(this);
@@ -183,6 +192,10 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         }
 
         for (VideoAvailabilityListener listener: mVideoAvailabilityListeners) {
+            dumpState(listener);
+        }
+
+        for (WebXRStateChangedListener listener: mWebXRStateListeners) {
             dumpState(listener);
         }
     }
@@ -213,6 +226,10 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
 
     private void dumpState(VideoAvailabilityListener aListener) {
         aListener.onVideoAvailabilityChanged(mState.mMediaElements != null && mState.mMediaElements.size() > 0);
+    }
+
+    private void dumpState(WebXRStateChangedListener aListener) {
+        aListener.onWebXRStateChanged(this, mState.mWebXRState);
     }
 
     private void flushQueuedEvents() {
@@ -302,6 +319,15 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         mBitmapChangedListeners.remove(aListener);
     }
 
+    public void addWebXRStateChangedListener(WebXRStateChangedListener aListener) {
+        mWebXRStateListeners.add(aListener);
+        dumpState(aListener);
+    }
+
+    public void removeWebXRStateChangedListener(WebXRStateChangedListener aListener) {
+        mWebXRStateListeners.remove(aListener);
+    }
+
     private void setupSessionListeners(GeckoSession aSession) {
         aSession.setNavigationDelegate(this);
         aSession.setProgressDelegate(this);
@@ -313,6 +339,7 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         aSession.setMediaDelegate(this);
         aSession.setHistoryDelegate(this);
         aSession.setSelectionActionDelegate(this);
+        aSession.setContentBlockingDelegate(this);
     }
 
     private void cleanSessionListeners(GeckoSession aSession) {
@@ -326,6 +353,7 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         aSession.setMediaDelegate(null);
         aSession.setHistoryDelegate(null);
         aSession.setSelectionActionDelegate(null);
+        aSession.setContentBlockingDelegate(null);
     }
 
     public void suspend() {
@@ -438,6 +466,10 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
     public void recreateSession() {
         SessionState previous = mState;
         mState = mState.recreate();
+
+        TrackingProtectionPolicy policy = TrackingProtectionStore.getTrackingProtectionPolicy(mContext);
+        mState.mSettings.setTrackingProtectionEnabled(policy.shouldBlockContent());
+
         restore();
 
         GeckoSession previousGeckoSession = null;
@@ -673,6 +705,10 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         }
     }
 
+    public void reload() {
+        reload(GeckoSession.LOAD_FLAGS_NONE);
+    }
+
     public void reload(final int flags) {
         if (mState.mSession != null) {
             mState.mSession.reload(flags);
@@ -757,6 +793,19 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         return false;
     }
 
+    public void setWebXRState(@SessionState.WebXRState int aWebXRState) {
+        if (aWebXRState != mState.mWebXRState) {
+            mState.mWebXRState = aWebXRState;
+            for (WebXRStateChangedListener listener: mWebXRStateListeners) {
+                dumpState(listener);
+            }
+        }
+    }
+
+    public @SessionState.WebXRState int getWebXRState() {
+        return mState.mWebXRState;
+    }
+
     // Session Settings
 
     protected void setServo(final boolean enabled) {
@@ -828,19 +877,7 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         if (overrideUri != null) {
             mState.mSession.loadUri(overrideUri, GeckoSession.LOAD_FLAGS_BYPASS_CACHE | GeckoSession.LOAD_FLAGS_REPLACE_HISTORY);
         } else {
-            // mState.mSession.reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
-            mState.mSession.loadUri(mState.mUri, GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
-
-        }
-    }
-
-
-    protected void setTrackingProtection(final boolean aEnabled) {
-        if (mState.mSettings.isTrackingProtectionEnabled() != aEnabled) {
-            mState.mSettings.setTrackingProtectionEnabled(aEnabled);
-            if (mState.mSession != null) {
-                mState.mSession.getSettings().setUseTrackingProtection(aEnabled);
-            }
+            mState.mSession.reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
         }
     }
 
@@ -993,6 +1030,7 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
         TelemetryWrapper.startPageLoadTime();
         GleanMetricsService.startPageLoadTime();
 
+        setWebXRState(SessionState.WEBXR_UNUSED);
         for (GeckoSession.ProgressDelegate listener : mProgressListeners) {
             listener.onPageStart(aSession, aUri);
         }
@@ -1187,19 +1225,38 @@ public class Session implements ContentBlocking.Delegate, GeckoSession.Navigatio
     @Override
     public void onContentBlocked(@NonNull final GeckoSession session, @NonNull final ContentBlocking.BlockEvent event) {
         if ((event.getAntiTrackingCategory() & ContentBlocking.AntiTracking.AD) != 0) {
-          Log.i(LOGTAG, "Blocking Ad: " + event.uri);
+            Log.d(LOGTAG, "Blocking Ad: " + event.uri);
         }
 
         if ((event.getAntiTrackingCategory() & ContentBlocking.AntiTracking.ANALYTIC) != 0) {
-            Log.i(LOGTAG, "Blocking Analytic: " + event.uri);
+            Log.d(LOGTAG, "Blocking Analytic: " + event.uri);
         }
 
         if ((event.getAntiTrackingCategory() & ContentBlocking.AntiTracking.CONTENT) != 0) {
-            Log.i(LOGTAG, "Blocking Content: " + event.uri);
+            Log.d(LOGTAG, "Blocking Content: " + event.uri);
         }
 
         if ((event.getAntiTrackingCategory() & ContentBlocking.AntiTracking.SOCIAL) != 0) {
-            Log.i(LOGTAG, "Blocking Social: " + event.uri);
+            Log.d(LOGTAG, "Blocking Social: " + event.uri);
+        }
+    }
+
+    @Override
+    public void onContentLoaded(@NonNull GeckoSession geckoSession, @NonNull ContentBlocking.BlockEvent event) {
+        if ((event.getAntiTrackingCategory() & ContentBlocking.AntiTracking.AD) != 0) {
+            Log.d(LOGTAG, "Loading Ad: " + event.uri);
+        }
+
+        if ((event.getAntiTrackingCategory() & ContentBlocking.AntiTracking.ANALYTIC) != 0) {
+            Log.d(LOGTAG, "Loading Analytic: " + event.uri);
+        }
+
+        if ((event.getAntiTrackingCategory() & ContentBlocking.AntiTracking.CONTENT) != 0) {
+            Log.d(LOGTAG, "Loading Content: " + event.uri);
+        }
+
+        if ((event.getAntiTrackingCategory() & ContentBlocking.AntiTracking.SOCIAL) != 0) {
+            Log.d(LOGTAG, "Loading Social: " + event.uri);
         }
     }
 

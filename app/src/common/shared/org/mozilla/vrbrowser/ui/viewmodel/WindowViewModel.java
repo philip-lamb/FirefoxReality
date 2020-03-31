@@ -65,7 +65,9 @@ public class WindowViewModel extends AndroidViewModel {
     private MutableLiveData<ObservableBoolean> isMediaAvailable;
     private MutableLiveData<ObservableBoolean> isMediaPlaying;
     private MediatorLiveData<String> navigationBarUrl;
-
+    private MutableLiveData<ObservableBoolean> isWebXRUsed;
+    private MutableLiveData<ObservableBoolean> isWebXRBlocked;
+    private MutableLiveData<ObservableBoolean> isTrackingEnabled;
 
     public WindowViewModel(Application application) {
         super(application);
@@ -154,6 +156,11 @@ public class WindowViewModel extends AndroidViewModel {
         navigationBarUrl = new MediatorLiveData<>();
         navigationBarUrl.addSource(url, mNavigationBarUrlObserver);
         navigationBarUrl.setValue("");
+
+        isWebXRUsed = new MutableLiveData<>(new ObservableBoolean(false));
+        isWebXRBlocked = new MutableLiveData<>(new ObservableBoolean(false));
+
+        isTrackingEnabled = new MutableLiveData<>(new ObservableBoolean(true));
     }
 
     private Observer<ObservableBoolean> mIsTopBarVisibleObserver = new Observer<ObservableBoolean>() {
@@ -304,6 +311,9 @@ public class WindowViewModel extends AndroidViewModel {
         titleBarUrl.setValue(titleBarUrl.getValue());
         isMediaAvailable.postValue(isMediaAvailable.getValue());
         isMediaPlaying.postValue(isMediaPlaying.getValue());
+        isWebXRUsed.postValue(isWebXRUsed.getValue());
+        isWebXRBlocked.postValue(isWebXRBlocked.getValue());
+        isTrackingEnabled.postValue(isTrackingEnabled.getValue());
     }
 
     @NonNull
@@ -557,12 +567,21 @@ public class WindowViewModel extends AndroidViewModel {
     }
 
     @NonNull
-    public MutableLiveData<ObservableBoolean> getIsPopUpAvailable() {
-        return isPopUpAvailable;
+    public MutableLiveData<ObservableBoolean> getIsWebXRUsed() {
+        return isWebXRUsed;
     }
 
-    public void setIsPopUpAvailable(boolean isPopUpAvailable) {
-        this.isPopUpAvailable.postValue(new ObservableBoolean(isPopUpAvailable));
+    public void setIsWebXRUsed(boolean used) {
+        this.isWebXRUsed.postValue(new ObservableBoolean(used));
+    }
+
+    @NonNull
+    public MutableLiveData<ObservableBoolean> getIsWebXRBlocked() {
+        return isWebXRBlocked;
+    }
+
+    public void setIsWebXRBlocked(boolean blocked) {
+        this.isWebXRBlocked.postValue(new ObservableBoolean(blocked));
     }
 
     @NonNull
@@ -637,5 +656,24 @@ public class WindowViewModel extends AndroidViewModel {
     @NonNull
     public MutableLiveData<String> getNavigationBarUrl() {
         return navigationBarUrl;
+    }
+
+
+    @NonNull
+    public MutableLiveData<ObservableBoolean> getIsPopUpAvailable() {
+        return isPopUpAvailable;
+    }
+
+    public void setIsPopUpAvailable(boolean isPopUpAvailable) {
+        this.isPopUpAvailable.postValue(new ObservableBoolean(isPopUpAvailable));
+    }
+
+    @NonNull
+    public MutableLiveData<ObservableBoolean> getIsTrackingEnabled() {
+        return isTrackingEnabled;
+    }
+
+    public void setIsTrackingEnabled(boolean isTrackingEnabled) {
+        this.isTrackingEnabled.postValue(new ObservableBoolean(isTrackingEnabled));
     }
 }

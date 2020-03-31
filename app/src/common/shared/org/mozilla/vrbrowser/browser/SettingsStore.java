@@ -8,14 +8,19 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.ViewModelProvider;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.mozilla.geckoview.ContentBlocking;
 import org.mozilla.geckoview.GeckoSessionSettings;
 import org.mozilla.telemetry.TelemetryHolder;
 import org.mozilla.vrbrowser.R;
+import org.mozilla.vrbrowser.VRBrowserActivity;
+import org.mozilla.vrbrowser.VRBrowserApplication;
 import org.mozilla.vrbrowser.telemetry.GleanMetricsService;
 import org.mozilla.vrbrowser.telemetry.TelemetryWrapper;
+import org.mozilla.vrbrowser.ui.viewmodel.SettingsViewModel;
 import org.mozilla.vrbrowser.utils.DeviceType;
 import org.mozilla.vrbrowser.utils.StringUtils;
 import org.mozilla.vrbrowser.utils.SystemUtils;
@@ -44,6 +49,7 @@ public class SettingsStore {
 
     private Context mContext;
     private SharedPreferences mPrefs;
+    private SettingsViewModel mSettingsViewModel;
 
     // Developer options default values
     public final static boolean REMOTE_DEBUGGING_DEFAULT = false;
@@ -53,7 +59,7 @@ public class SettingsStore {
     public final static boolean UI_HARDWARE_ACCELERATION_DEFAULT_WAVEVR = false;
     public final static boolean PERFORMANCE_MONITOR_DEFAULT = true;
     public final static boolean DRM_PLAYBACK_DEFAULT = false;
-    public final static boolean TRACKING_DEFAULT = true;
+    public final static int TRACKING_DEFAULT = ContentBlocking.EtpLevel.DEFAULT;
     public final static boolean NOTIFICATIONS_DEFAULT = true;
     public final static boolean SPEECH_DATA_COLLECTION_DEFAULT = false;
     public final static boolean SPEECH_DATA_COLLECTION_REVIEWED_DEFAULT = false;
@@ -76,6 +82,7 @@ public class SettingsStore {
     public final static boolean AUTOPLAY_ENABLED = false;
     public final static boolean DEBUG_LOGGING_DEFAULT = false;
     public final static boolean POP_UPS_BLOCKING_DEFAULT = true;
+    public final static boolean WEBXR_ENABLED_DEFAULT = true;
     public final static boolean TELEMETRY_STATUS_UPDATE_SENT_DEFAULT = false;
     public final static boolean BOOKMARKS_SYNC_DEFAULT = true;
     public final static boolean HISTORY_SYNC_DEFAULT = true;
@@ -83,6 +90,7 @@ public class SettingsStore {
     public final static long FXA_LAST_SYNC_NEVER = 0;
     public final static boolean RESTORE_TABS_ENABLED = true;
     public final static boolean BYPASS_CACHE_ON_RELOAD = false;
+    public final static boolean MULTI_E10S = false;
     public final static boolean ENVIRONMENT_PASSTHROUGH_ENABLED = false;
 
     // Enable telemetry by default (opt-out).
@@ -94,6 +102,14 @@ public class SettingsStore {
     public SettingsStore(Context aContext) {
         mContext = aContext;
         mPrefs = PreferenceManager.getDefaultSharedPreferences(aContext);
+    }
+
+    public void initModel(@NonNull Context context) {
+        mSettingsViewModel = new ViewModelProvider(
+                (VRBrowserActivity)context,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(((VRBrowserActivity) context).getApplication()))
+                .get(SettingsViewModel.class);
+        mSettingsViewModel.refresh();
     }
 
     public boolean isCrashReportingEnabled() {
@@ -205,15 +221,17 @@ public class SettingsStore {
         editor.commit();
     }
 
-    public boolean isTrackingProtectionEnabled() {
-        return mPrefs.getBoolean(
-                mContext.getString(R.string.settings_key_tracking_protection), TRACKING_DEFAULT);
+    public int getTrackingProtectionLevel() {
+        return mPrefs.getInt(
+                mContext.getString(R.string.settings_key_tracking_protection_level), TRACKING_DEFAULT);
     }
 
-    public void setTrackingProtectionEnabled(boolean isEnabled) {
+    public void setTrackingProtectionLevel(int level) {
         SharedPreferences.Editor editor = mPrefs.edit();
-        editor.putBoolean(mContext.getString(R.string.settings_key_tracking_protection), isEnabled);
+        editor.putInt(mContext.getString(R.string.settings_key_tracking_protection_level), level);
         editor.commit();
+
+        mSettingsViewModel.setIsTrackingProtectionEnabled(level != ContentBlocking.EtpLevel.NONE);
     }
 
     public boolean isEnvironmentOverrideEnabled() {
@@ -594,6 +612,16 @@ public class SettingsStore {
         editor.commit();
     }
 
+    public boolean isWebXREnabled() {
+        return mPrefs.getBoolean(mContext.getString(R.string.settings_key_webxr), WEBXR_ENABLED_DEFAULT);
+    }
+
+    public void setWebXREnabled(boolean isEnabled) {
+        SharedPreferences.Editor editor = mPrefs.edit();
+        editor.putBoolean(mContext.getString(R.string.settings_key_webxr), isEnabled);
+        editor.commit();
+    }
+
     public void setWhatsNewDisplayed(boolean isEnabled) {
         SharedPreferences.Editor editor = mPrefs.edit();
         editor.putBoolean(mContext.getString(R.string.settings_key_whats_new_displayed), isEnabled);
@@ -656,12 +684,22 @@ public class SettingsStore {
 
     public void setBypassCacheOnReload(boolean isEnabled) {
         SharedPreferences.Editor editor = mPrefs.edit();
-        editor.putBoolean(mContext.getString(R.string.settings_key_bypass_cache_on_reload),isEnabled);
+        editor.putBoolean(mContext.getString(R.string.settings_key_bypass_cache_on_reload), isEnabled);
         editor.commit();
     }
 
     public boolean isBypassCacheOnReloadEnabled() {
         return mPrefs.getBoolean(mContext.getString(R.string.settings_key_bypass_cache_on_reload), BYPASS_CACHE_ON_RELOAD);
+    }
+
+    public void setMultiE10s(boolean isEnabled) {
+        SharedPreferences.Editor editor = mPrefs.edit();
+        editor.putBoolean(mContext.getString(R.string.settings_key_multi_e10s), isEnabled);
+        editor.commit();
+    }
+
+    public boolean isMultiE10s() {
+        return mPrefs.getBoolean(mContext.getString(R.string.settings_key_multi_e10s), MULTI_E10S);
     }
 
     public void setEnvironmentPassthroughEnabled(boolean isEnabled) {

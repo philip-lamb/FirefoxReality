@@ -25,19 +25,17 @@ import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.databinding.DataBindingUtil;
 
-import org.mozilla.geckoview.GeckoSessionSettings;
 import org.mozilla.vrbrowser.BuildConfig;
 import org.mozilla.vrbrowser.R;
-import org.mozilla.vrbrowser.VRBrowserActivity;
 import org.mozilla.vrbrowser.VRBrowserApplication;
 import org.mozilla.vrbrowser.audio.AudioEngine;
 import org.mozilla.vrbrowser.browser.Accounts;
 import org.mozilla.vrbrowser.browser.engine.Session;
 import org.mozilla.vrbrowser.browser.engine.SessionStore;
 import org.mozilla.vrbrowser.databinding.SettingsBinding;
+import org.mozilla.vrbrowser.db.SitePermission;
 import org.mozilla.vrbrowser.telemetry.GleanMetricsService;
 import org.mozilla.vrbrowser.ui.widgets.UIWidget;
-import org.mozilla.vrbrowser.ui.widgets.WidgetManagerDelegate;
 import org.mozilla.vrbrowser.ui.widgets.WidgetPlacement;
 import org.mozilla.vrbrowser.ui.widgets.WindowWidget;
 import org.mozilla.vrbrowser.ui.widgets.dialogs.RestartDialogWidget;
@@ -310,8 +308,6 @@ public class SettingsWidget extends UIDialog implements SettingsView.Delegate {
                             } else {
                                 mAccounts.setLoginOrigin(Accounts.LoginOrigin.SETTINGS);
                                 mWidgetManager.openNewTabForeground(url);
-                                WidgetManagerDelegate widgetManager = ((VRBrowserActivity)getContext());
-                                widgetManager.getFocusedWindow().getSession().setUaMode(GeckoSessionSettings.USER_AGENT_MODE_MOBILE);
                                 GleanMetricsService.Tabs.openedCounter(GleanMetricsService.Tabs.TabSource.FXA_LOGIN);
                             }
 
@@ -418,7 +414,10 @@ public class SettingsWidget extends UIDialog implements SettingsView.Delegate {
                 showView(new PrivacyOptionsView(getContext(), mWidgetManager));
                 break;
             case POPUP_EXCEPTIONS:
-                showView(new PopUpExceptionsOptionsView(getContext(), mWidgetManager));
+                showView(new SitePermissionsOptionsView(getContext(), mWidgetManager, SitePermission.SITE_PERMISSION_POPUP));
+                break;
+            case WEBXR_EXCEPTIONS:
+                showView(new SitePermissionsOptionsView(getContext(), mWidgetManager, SitePermission.SITE_PERMISSION_WEBXR));
                 break;
             case DEVELOPER:
                 showView(new DeveloperOptionsView(getContext(), mWidgetManager));
@@ -431,6 +430,9 @@ public class SettingsWidget extends UIDialog implements SettingsView.Delegate {
                 break;
             case CONTROLLER:
                 showView(new ControllerOptionsView(getContext(), mWidgetManager));
+                break;
+            case TRACKING_EXCEPTION:
+                showView(new SitePermissionsOptionsView(getContext(), mWidgetManager, SitePermission.SITE_PERMISSION_TRACKING));
                 break;
         }
     }
@@ -530,7 +532,7 @@ public class SettingsWidget extends UIDialog implements SettingsView.Delegate {
     }
 
     private boolean isPrivacySubView(View view) {
-        if (view instanceof PopUpExceptionsOptionsView) {
+        if (view instanceof SitePermissionsOptionsView) {
             return true;
         }
 

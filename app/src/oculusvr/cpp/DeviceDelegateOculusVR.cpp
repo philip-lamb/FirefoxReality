@@ -88,7 +88,10 @@ struct DeviceDelegateOculusVR::State {
   vrb::FBOPtr previousFBO;
   vrb::CameraEyePtr cameras[2];
   uint32_t frameIndex = 0;
+  FramePrediction framePrediction = FramePrediction::NO_FRAME_AHEAD;
+  double prevPredictedDisplayTime = 0;
   double predictedDisplayTime = 0;
+  ovrTracking2 prevPredictedTracking = {};
   ovrTracking2 predictedTracking = {};
   ovrTracking2 discardPredictedTracking = {};
   uint32_t discardedFrameIndex = 0;
@@ -221,6 +224,18 @@ struct DeviceDelegateOculusVR::State {
       vrapi_SetDisplayRefreshRate(ovr, 72.0f);
     } else {
       vrapi_SetDisplayRefreshRate(ovr, 60.0f);
+    }
+  }
+
+  void UpdateBoundary() {
+    if (!ovr || !Is6DOF()) {
+      return;
+    }
+    ovrPosef pose;
+    ovrVector3f size;
+    vrapi_GetBoundaryOrientedBoundingBox(ovr, &pose, &size);
+    if (immersiveDisplay) {
+      immersiveDisplay->SetStageSize(size.x * 2.0f, size.z * 2.0f);
     }
   }
 
@@ -383,12 +398,12 @@ struct DeviceDelegateOculusVR::State {
 
     for (ControllerState& controllerState: controllerStateList) {
       if (controllerState.deviceId == ovrDeviceIdType_Invalid) {
-        return;
+        continue;
       }
       ovrTracking tracking = {};
       if (vrapi_GetInputTrackingState(ovr, controllerState.deviceId, predictedDisplayTime, &tracking) != ovrSuccess) {
         VRB_LOG("Failed to read controller tracking controllerStateList");
-        return;
+        continue;
       }
 
       device::CapabilityFlags flags = 0;
@@ -459,7 +474,7 @@ struct DeviceDelegateOculusVR::State {
           const bool bTouched = (controllerState.inputState.Touches & ovrTouch_B) != 0;
 
           controller->SetButtonState(controllerState.index, ControllerDelegate::BUTTON_A, 3, aPressed, aTouched);
-          controller->SetButtonState(controllerState.index, ControllerDelegate::BUTTON_Y, 4, bPressed, bTouched);
+          controller->SetButtonState(controllerState.index, ControllerDelegate::BUTTON_B, 4, bPressed, bTouched);
 
           if (renderMode != device::RenderMode::Immersive) {
             controller->SetButtonState(controllerState.index, ControllerDelegate::BUTTON_APP, -1, bPressed, bTouched);
@@ -666,9 +681,10 @@ DeviceDelegateOculusVR::RegisterImmersiveDisplay(ImmersiveDisplayPtr aDisplay) {
   m.GetImmersiveRenderSize(width, height);
   m.immersiveDisplay->SetEyeResolution(width, height);
   m.immersiveDisplay->SetSittingToStandingTransform(vrb::Matrix::Translation(kAverageOculusHeight));
-  m.immersiveDisplay->CompleteEnumeration();
-
+  m.UpdateBoundary();
   m.UpdatePerspective();
+
+  m.immersiveDisplay->CompleteEnumeration();
 }
 
 void
@@ -777,10 +793,6 @@ DeviceDelegateOculusVR::SetCPULevel(const device::CPULevel aLevel) {
 
 void
 DeviceDelegateOculusVR::ProcessEvents() {
-  if (m.applicationEntitled) {
-    return;
-  }
-
   ovrMessageHandle message;
   while ((message = ovr_PopMessage()) != nullptr) {
     switch (ovr_Message_GetType(message)) {
@@ -812,21 +824,46 @@ DeviceDelegateOculusVR::ProcessEvents() {
           m.applicationEntitled = true;
         }
         break;
+      case ovrMessage_Notification_ApplicationLifecycle_LaunchIntentChanged: {
+        ovrLaunchDetailsHandle details = ovr_ApplicationLifecycle_GetLaunchDetails();
+        if (ovr_LaunchDetails_GetLaunchType(details) == ovrLaunchType_Deeplink) {
+          const char* msg = ovr_LaunchDetails_GetDeeplinkMessage(details);
+          if (msg) {
+            // FIXME see https://github.com/MozillaReality/FirefoxReality/issues/3066
+            // Currently handled in VRBrowserActivity.loadFromIntent()
+            // VRBrowser::OnAppLink(msg);
+          }
+        }
+        break;
+      }
       default:
         break;
     }
   }
 }
 
+bool
+DeviceDelegateOculusVR::SupportsFramePrediction(FramePrediction aPrediction) const {
+  return true;
+}
+
 void
-DeviceDelegateOculusVR::StartFrame() {
+DeviceDelegateOculusVR::StartFrame(const FramePrediction aPrediction) {
   if (!m.ovr) {
     VRB_LOG("StartFrame called while not in VR mode");
     return;
   }
 
+  m.framePrediction = aPrediction;
   m.frameIndex++;
-  m.predictedDisplayTime = vrapi_GetPredictedDisplayTime(m.ovr, m.frameIndex);
+  if (aPrediction == FramePrediction::ONE_FRAME_AHEAD) {
+    m.prevPredictedDisplayTime = m.predictedDisplayTime;
+    m.prevPredictedTracking = m.predictedTracking;
+    m.predictedDisplayTime = vrapi_GetPredictedDisplayTime(m.ovr, m.frameIndex + 1);
+  } else {
+    m.predictedDisplayTime = vrapi_GetPredictedDisplayTime(m.ovr, m.frameIndex);
+  }
+
   m.predictedTracking = vrapi_GetPredictedTracking2(m.ovr, m.predictedDisplayTime);
 
   float ipd = vrapi_GetInterpupillaryDistance(&m.predictedTracking);
@@ -908,7 +945,7 @@ DeviceDelegateOculusVR::BindEye(const device::Eye aWhich) {
 }
 
 void
-DeviceDelegateOculusVR::EndFrame(const bool aDiscard) {
+DeviceDelegateOculusVR::EndFrame(const FrameEndMode aEndMode) {
   if (!m.ovr) {
     VRB_LOG("EndFrame called while not in VR mode");
     return;
@@ -918,11 +955,15 @@ DeviceDelegateOculusVR::EndFrame(const bool aDiscard) {
     m.currentFBO.reset();
   }
 
-  if (aDiscard) {
+  const bool frameAhead = m.framePrediction == FramePrediction::ONE_FRAME_AHEAD;
+  const ovrTracking2& tracking = frameAhead ? m.prevPredictedTracking : m.predictedTracking;
+  const double displayTime = frameAhead ? m.prevPredictedDisplayTime : m.predictedDisplayTime;
+
+  if (aEndMode == FrameEndMode::DISCARD) {
     // Reuse the last frame when a frame is discarded.
     // The last frame is timewarped by the VR compositor.
     if (m.discardCount == 0) {
-      m.discardPredictedTracking = m.predictedTracking;
+      m.discardPredictedTracking = tracking;
       m.discardedFrameIndex = m.frameIndex;
     }
     m.discardCount++;
@@ -936,13 +977,13 @@ DeviceDelegateOculusVR::EndFrame(const bool aDiscard) {
   const ovrLayerHeader2* layers[ovrMaxLayerCount] = {};
 
   if (m.cubeLayer && m.cubeLayer->IsLoaded() && m.cubeLayer->IsDrawRequested()) {
-    m.cubeLayer->Update(m.predictedTracking, m.clearColorSwapChain);
+    m.cubeLayer->Update(tracking, m.clearColorSwapChain);
     layers[layerCount++] = m.cubeLayer->Header();
     m.cubeLayer->ClearRequestDraw();
   }
 
   if (m.equirectLayer && m.equirectLayer->IsDrawRequested()) {
-    m.equirectLayer->Update(m.predictedTracking, m.clearColorSwapChain);
+    m.equirectLayer->Update(tracking, m.clearColorSwapChain);
     layers[layerCount++] = m.equirectLayer->Header();
     m.equirectLayer->ClearRequestDraw();
   }
@@ -955,7 +996,7 @@ DeviceDelegateOculusVR::EndFrame(const bool aDiscard) {
   // Draw back layers
   for (const OculusLayerPtr& layer: m.uiLayers) {
     if (!layer->GetDrawInFront() && layer->IsDrawRequested() && (layerCount < ovrMaxLayerCount - 1)) {
-      layer->Update(m.predictedTracking, m.clearColorSwapChain);
+      layer->Update(tracking, m.clearColorSwapChain);
       layers[layerCount++] = layer->Header();
       layer->ClearRequestDraw();
     }
@@ -967,7 +1008,7 @@ DeviceDelegateOculusVR::EndFrame(const bool aDiscard) {
   const ovrMatrix4f projectionMatrix = ovrMatrix4f_CreateProjectionFov(fovX, fovY, 0.0f, 0.0f, VRAPI_ZNEAR, 0.0f);
 
   ovrLayerProjection2 projection = vrapi_DefaultLayerProjection2();
-  projection.HeadPose = m.predictedTracking.HeadPose;
+  projection.HeadPose = tracking.HeadPose;
   projection.Header.SrcBlend = VRAPI_FRAME_LAYER_BLEND_ONE;
   projection.Header.DstBlend = VRAPI_FRAME_LAYER_BLEND_ONE_MINUS_SRC_ALPHA;
   for (int i = 0; i < VRAPI_FRAME_LAYER_EYE_MAX; ++i) {
@@ -983,7 +1024,7 @@ DeviceDelegateOculusVR::EndFrame(const bool aDiscard) {
   // Draw front layers
   for (const OculusLayerPtr& layer: m.uiLayers) {
     if (layer->GetDrawInFront() && layer->IsDrawRequested() && layerCount < ovrMaxLayerCount) {
-      layer->Update(m.predictedTracking, m.clearColorSwapChain);
+      layer->Update(tracking, m.clearColorSwapChain);
       layers[layerCount++] = layer->Header();
       layer->ClearRequestDraw();
     }
@@ -998,7 +1039,7 @@ DeviceDelegateOculusVR::EndFrame(const bool aDiscard) {
   }
   frameDesc.SwapInterval = 1;
   frameDesc.FrameIndex = m.frameIndex;
-  frameDesc.DisplayTime = m.predictedDisplayTime;
+  frameDesc.DisplayTime = displayTime;
 
   frameDesc.LayerCount = layerCount;
   frameDesc.Layers = layers;
@@ -1175,6 +1216,7 @@ DeviceDelegateOculusVR::EnterVR(const crow::BrowserEGLContext& aEGLContext) {
     m.UpdateDisplayRefreshRate();
     m.UpdateClockLevels();
     m.UpdateTrackingMode();
+    m.UpdateBoundary();
   }
 
   // Reset reorientation after Enter VR
