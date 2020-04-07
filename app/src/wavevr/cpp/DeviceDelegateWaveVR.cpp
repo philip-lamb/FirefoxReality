@@ -115,6 +115,9 @@ struct DeviceDelegateWaveVR::State {
   int32_t arViewport[4];
   ARGL_CONTEXT_SETTINGS_REF arglContextSettingsL;
   ARGL_CONTEXT_SETTINGS_REF arglContextSettingsR;
+  bool arSaveVideoImage;
+  long arSaveVideoImageNumber;
+  char *arSaveVideoImageFolder;
   State()
       : isRunning(true)
       , near(0.1f)
@@ -145,6 +148,9 @@ struct DeviceDelegateWaveVR::State {
       , arViewport{0}
       , arglContextSettingsL(nullptr)
       , arglContextSettingsR(nullptr)
+      , arSaveVideoImage(false)
+      , arSaveVideoImageNumber(0L)
+      , arSaveVideoImageFolder(nullptr)
   {
     memset((void*)devicePairs, 0, sizeof(WVR_DevicePosePair_t) * WVR_DEVICE_COUNT_LEVEL_1);
     gestures = GestureDelegate::Create();
@@ -950,11 +956,16 @@ DeviceDelegateWaveVR::StartPassthroughVideo() {
   }
 
   m.UpdateARViewport();
+
+  m.arSaveVideoImageFolder = arUtilGetResourcesDirectoryPath(AR_UTIL_RESOURCES_DIRECTORY_BEHAVIOR_USE_USER_ROOT, nullptr);
+  ARLOGi("Video save path is '%s'.\n", m.arSaveVideoImageFolder);
 }
 
 void
 DeviceDelegateWaveVR::StopPassthroughVideo() {
   if (!m.arVideo) return;
+  free(m.arSaveVideoImageFolder);
+  m.arSaveVideoImageFolder = nullptr;
   ar2VideoCapStop(m.arVideo);
   ar2VideoClose(m.arVideo);
   m.arVideoImage = nullptr;
@@ -981,6 +992,13 @@ DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
     if (m.arVideoImage && m.arVideoImage->fillFlag) {
       arglPixelBufferDataUploadBiPlanar(m.arglContextSettingsL, m.arVideoImage->buff,
                                         (m.arVideoPixelFormat == AR_PIXEL_FORMAT_NV21 ? m.arVideoImage->bufPlanes[1] : nullptr));
+      if (m.arSaveVideoImage) {
+        char imageNumberText[1024];
+        sprintf(imageNumberText, "%s/image-%04ld.jpg", m.arSaveVideoImageFolder, m.arSaveVideoImageNumber++);
+        if (arVideoSaveImageJPEG(m.arVideoWidthPadded, m.arVideoHeight, m.arVideoPixelFormat, m.arVideoImage->buff, imageNumberText, 75, 0) < 0) {
+          ARLOGe("Error saving video image.\n");
+        }
+      }
     }
     arglDispImage(m.arglContextSettingsL, m.arViewport);
     glViewport(0, 0, m.renderWidth, m.renderHeight); // Restore viewport.
