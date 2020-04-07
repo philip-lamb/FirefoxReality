@@ -458,8 +458,14 @@
     <!-- This string is used as the description of the 'Standard' radio button of the 'Enhanced Tracking protection' settings option. -->
     <string name="privacy_options_tracking_etp_description">Équilibré entre protection et performances. Les pages se chargeront normalement.</string>
 
+    <!-- This string is used to label the 'Strict' radio button of the 'Tracking protection' settings option. -->
+    <string name="privacy_options_tracking_strict">Stricte</string>
+
     <!-- This string is used as the description of the 'Strict' radio button of the 'Enhanced Tracking protection' settings option. -->
     <string name="privacy_options_tracking_strict_description">Protection renforcée, mais certains sites ou contenus peuvent ne pas fonctionner correctement.</string>
+
+    <!-- This string is used to label the 'Off' radio button of the 'Tracking protection' settings option. -->
+    <string name="privacy_options_tracking_off">Désactivée</string>
 
     <!-- This string is used as the description of the 'Off' radio button of the 'Enhanced Tracking protection' settings option. -->
     <string name="privacy_options_tracking_off_description">Permet à toutes les pages de vous suivre en ligne pour collecter vos habitudes de navigation et vos intérêts.</string>
@@ -660,6 +666,10 @@
     <!-- This string labels the button in the privacy option panel that open the dialog to add/remove
          pop-up blocked sites. -->
     <string name="security_options_block_pup_up_settings">Avancé</string>
+
+    <!-- This string labels the button in the privacy option panel that enables/disables Virtual Reality
+        Devices access to websites (WebXR). -->
+    <string name="security_options_permission_webxr">Dispositifs de réalité virtuelle (WebXR)</string>
 
     <!-- This string is a label above the group of switches that indicates that the switches below
          relate to Firefox data collection and use. -->

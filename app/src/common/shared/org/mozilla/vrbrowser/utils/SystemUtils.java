@@ -8,12 +8,12 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import org.mozilla.gecko.util.ThreadUtils;
 import org.mozilla.geckoview.CrashReporter;
 import org.mozilla.geckoview.GeckoResult;
 import org.mozilla.vrbrowser.BuildConfig;
 import org.mozilla.vrbrowser.R;
 import org.mozilla.vrbrowser.VRBrowserActivity;
+import org.mozilla.vrbrowser.VRBrowserApplication;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -60,7 +60,7 @@ public class SystemUtils {
     private static final String CRASH_STATS_URL = "https://crash-stats.mozilla.com/report/index/";
 
     private static void sendCrashFiles(@NonNull Context context, @NonNull final String aDumpFile, @NonNull final String aExtraFile) {
-        ThreadUtils.postToBackgroundThread(() -> {
+        ((VRBrowserApplication)context.getApplicationContext()).getExecutors().backgroundThread().post(() -> {
             try {
                 GeckoResult<String> result = CrashReporter.sendCrashReport(context, new File(aDumpFile), new File(aExtraFile), context.getString(R.string.crash_app_name));
 

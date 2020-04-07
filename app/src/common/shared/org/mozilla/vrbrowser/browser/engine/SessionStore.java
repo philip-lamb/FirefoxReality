@@ -8,7 +8,6 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import org.mozilla.gecko.util.ThreadUtils;
 import org.mozilla.geckoview.GeckoRuntime;
 import org.mozilla.geckoview.GeckoSession;
 import org.mozilla.vrbrowser.VRBrowserApplication;
@@ -24,6 +23,7 @@ import org.mozilla.vrbrowser.utils.UrlUtils;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 public class SessionStore implements GeckoSession.PermissionDelegate{
     private static final String LOGTAG = SystemUtils.createLogtag(SessionStore.class);
@@ -38,6 +38,7 @@ public class SessionStore implements GeckoSession.PermissionDelegate{
         return mInstance;
     }
 
+    private Executor mMainExecutor;
     private Context mContext;
     private GeckoRuntime mRuntime;
     private ArrayList<Session> mSessions;
@@ -55,6 +56,7 @@ public class SessionStore implements GeckoSession.PermissionDelegate{
 
     public void setContext(Context context, Bundle aExtras) {
         mContext = context;
+        mMainExecutor = ((VRBrowserApplication)context.getApplicationContext()).getExecutors().mainThread();
 
         // FIXME: Once GeckoView has a prefs API
         SessionUtils.vrPrefsWorkAround(context, aExtras);
@@ -199,7 +201,7 @@ public class SessionStore implements GeckoSession.PermissionDelegate{
         if (count > MAX_GECKO_SESSIONS) {
             Log.d(LOGTAG, "Too many GeckoSessions. Active: " + activeCount + " Inactive: " + inactiveCount + " Suspended: " + suspendedCount);
             mSuspendPending = true;
-            ThreadUtils.postToUiThread(this::limitInactiveSessions);
+            mMainExecutor.execute(this::limitInactiveSessions);
         }
     }
 

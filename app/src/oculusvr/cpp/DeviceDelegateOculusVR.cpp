@@ -131,7 +131,6 @@ struct DeviceDelegateOculusVR::State {
 
   void Initialize() {
     elbow = ElbowModel::Create();
-    layersEnabled = VRBrowser::AreLayersEnabled();
     vrb::RenderContextPtr localContext = context.lock();
 
     java.Vm = app->activity->vm;
@@ -147,6 +146,13 @@ struct DeviceDelegateOculusVR::State {
       return;
     }
     initialized = true;
+    std::string version = vrapi_GetVersionString();
+    if (version.find("1.1.32.0") != std::string::npos) {
+      VRB_ERROR("Force layer clip due to driver bug. VRAPI Runtime Version: %s",vrapi_GetVersionString());
+      OculusLayer::sForceClip = true;
+    }
+
+    layersEnabled = VRBrowser::AreLayersEnabled();
     SetRenderSize(device::RenderMode::StandAlone);
 
     for (int i = 0; i < VRAPI_EYE_COUNT; ++i) {
@@ -894,6 +900,9 @@ DeviceDelegateOculusVR::StartFrame(const FramePrediction aPrediction) {
                                    device::InlineSession | device::ImmersiveVRSession;
     if (m.predictedTracking.Status & VRAPI_TRACKING_STATUS_POSITION_TRACKED) {
       caps |= device::Position;
+      auto standing = vrapi_LocateTrackingSpace(m.ovr, VRAPI_TRACKING_SPACE_LOCAL_FLOOR);
+      vrb::Vector translation(-standing.Position.x, -standing.Position.y, -standing.Position.z);
+      m.immersiveDisplay->SetSittingToStandingTransform(vrb::Matrix::Translation(translation));
     } else {
       caps |= device::PositionEmulated;
     }
@@ -1226,6 +1235,16 @@ DeviceDelegateOculusVR::EnterVR(const crow::BrowserEGLContext& aEGLContext) {
 
 void
 DeviceDelegateOculusVR::LeaveVR() {
+  if (m.ovr) {
+    vrapi_LeaveVrMode(m.ovr);
+    m.ovr = nullptr;
+  }
+  m.currentFBO = nullptr;
+  m.previousFBO = nullptr;
+}
+
+void
+DeviceDelegateOculusVR::OnDestroy() {
   for (OculusLayerPtr& layer: m.uiLayers) {
     layer->Destroy();
   }
@@ -1242,13 +1261,6 @@ DeviceDelegateOculusVR::LeaveVR() {
   if (m.clearColorSwapChain) {
     vrapi_DestroyTextureSwapChain(m.clearColorSwapChain);
     m.clearColorSwapChain = nullptr;
-  }
-  m.currentFBO = nullptr;
-  m.previousFBO = nullptr;
-
-  if (m.ovr) {
-    vrapi_LeaveVrMode(m.ovr);
-    m.ovr = nullptr;
   }
 }
 

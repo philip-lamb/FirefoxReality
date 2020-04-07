@@ -3,7 +3,6 @@ package org.mozilla.vrbrowser.utils;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
-import android.util.Log;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
@@ -12,8 +11,6 @@ import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 
 import androidx.annotation.NonNull;
-
-import org.mozilla.gecko.util.ThreadUtils;
 
 public class AnimationHelper {
     public static final long FADE_ANIMATION_DURATION = 150;
@@ -124,7 +121,7 @@ public class AnimationHelper {
             public void onAnimationEnd(Animator animation) {
                 super.onAnimationEnd(animation);
                 if (aCallback != null)
-                    ThreadUtils.postToUiThread(aCallback);
+                    aView.post(aCallback);
             }
         }).setUpdateListener(animation -> aView.invalidate());
     }
@@ -137,7 +134,7 @@ public class AnimationHelper {
             public void onAnimationEnd(Animator animation) {
                 super.onAnimationEnd(animation);
                 if (aCallback != null)
-                    ThreadUtils.postToUiThread(aCallback);
+                    aView.post(aCallback);
             }
         }).setUpdateListener(animation -> aView.invalidate());
     }
@@ -145,7 +142,7 @@ public class AnimationHelper {
     public static void scaleTo(@NonNull View aView, float scaleX, float scaleY, long duration, long delay, final Runnable aCallback) {
         if (aView.getScaleX() == scaleX && aView.getScaleY() == scaleY) {
             if (aCallback != null) {
-                ThreadUtils.postToUiThread(aCallback);
+                aView.post(aCallback);
             }
             return;
         }
@@ -154,7 +151,7 @@ public class AnimationHelper {
             public void onAnimationEnd(Animator animation) {
                 super.onAnimationEnd(animation);
                 if (aCallback != null) {
-                    ThreadUtils.postToUiThread(aCallback);
+                    aView.post(aCallback);
                 }
             }
         }).setUpdateListener(animation -> aView.invalidate());
