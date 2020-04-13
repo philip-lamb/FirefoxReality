@@ -105,16 +105,22 @@ public class TrackingProtectionStore implements DefaultLifecycleObserver,
             return;
         }
 
-        final List<ContentBlockingException> exceptionsList = new ArrayList<>();
-        mContentBlockingController.clearExceptionList();
         for (int i=0; i<count; i++) {
             SitePermission permission = mSitePermissions.get(position + i);
             ContentBlockingException exception = toContentBlockingException(permission);
             if (exception != null) {
-                exceptionsList.add(exception);
                 mListeners.forEach(listener -> listener.onExcludedTrackingProtectionChange(
                         UrlUtils.getHost(exception.uri),
                         true));
+            }
+        }
+
+        final List<ContentBlockingException> exceptionsList = new ArrayList<>();
+        mContentBlockingController.clearExceptionList();
+        for (SitePermission permission: mSitePermissions) {
+            ContentBlockingException exception = toContentBlockingException(permission);
+            if (exception != null) {
+                exceptionsList.add(exception);
             }
         }
         mContentBlockingController.restoreExceptionList(exceptionsList);
@@ -177,8 +183,7 @@ public class TrackingProtectionStore implements DefaultLifecycleObserver,
                 SitePermission olSite = mSitePermissions.get(oldItemPosition);
                 return newSite.url.equals(olSite.url)
                         && Objects.equals(newSite.category, olSite.category)
-                        && Objects.equals(newSite.principal, olSite.principal)
-                        && newSite.allowed == olSite.allowed;
+                        && Objects.equals(newSite.principal, olSite.principal);
             }
         });
 
@@ -275,7 +280,6 @@ public class TrackingProtectionStore implements DefaultLifecycleObserver,
             return new SitePermission(
                     json.getString("uri"),
                     json.getString("principal"),
-                    false,
                     SitePermission.SITE_PERMISSION_TRACKING);
 
         } catch (JSONException e) {

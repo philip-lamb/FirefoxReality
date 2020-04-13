@@ -28,6 +28,8 @@
 namespace crow {
 
 static const vrb::Vector kAverageHeight(0.0f, 1.7f, 0.0f);
+// TODO: Get real sitting to standing transform when SDK provides it
+static const vrb::Vector kAverageSittingToStanding(0.0f, 1.2f, 0.0f);
 // TODO: support different controllers & buttons
 static const int32_t kMaxControllerCount = 3;
 static const int32_t kNumButtons = 6;
@@ -282,10 +284,12 @@ DeviceDelegatePicoVR::RegisterImmersiveDisplay(ImmersiveDisplayPtr aDisplay) {
   }
 
   m.immersiveDisplay->SetDeviceName("Pico");
-  device::CapabilityFlags flags = device::Orientation | device::Present | device::ImmersiveVRSession | device::InlineSession;
+  device::CapabilityFlags flags = device::Orientation | device::Present |
+          device::ImmersiveVRSession | device::InlineSession;
   if (m.type == k6DofHeadSet) {
-    flags |= device::Position;
+    flags |= device::Position | device::StageParameters;
   }
+  m.immersiveDisplay->SetSittingToStandingTransform(vrb::Matrix::Translation(kAverageSittingToStanding));
   m.immersiveDisplay->SetCapabilityFlags(flags);
   m.immersiveDisplay->SetEyeResolution(m.renderWidth / 2, m.renderHeight / 2);
   m.immersiveDisplay->CompleteEnumeration();
@@ -369,13 +373,13 @@ const std::string
 DeviceDelegatePicoVR::GetControllerModelName(const int32_t aModelIndex) const {
   if (m.type == k6DofHeadSet) {
     if (aModelIndex == 0) {
-      return "left_controller.obj";
+      return "neo2_left.obj";
     } else if (aModelIndex == 1) {
-      return "right_controller.obj";
+      return "neo2_right.obj";
     }
     return "";
   } else {
-    return "g2-Controller.obj";
+    return "g2.obj";
   }
 }
 
@@ -443,6 +447,11 @@ DeviceDelegatePicoVR::IsInGazeMode() const {
 int32_t
 DeviceDelegatePicoVR::GazeModeIndex() const {
   return m.gazeIndex;
+}
+
+bool
+DeviceDelegatePicoVR::IsControllerLightEnabled() const {
+  return false;
 }
 
 void
@@ -535,7 +544,7 @@ DeviceDelegatePicoVR::UpdateControllerButtons(const int aIndex, const int32_t aB
 }
 
 void
-DeviceDelegatePicoVR:: Recenter() {
+DeviceDelegatePicoVR::Recenter() {
     m.recentered = true;
     m.setHeadOffset = true;
 }

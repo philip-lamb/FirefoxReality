@@ -17,11 +17,11 @@ bool OculusLayer::sForceClip = false;
 // OculusLayerQuad
 
 OculusLayerQuadPtr
-OculusLayerQuad::Create(const VRLayerQuadPtr& aLayer, const OculusLayerPtr& aSource) {
+OculusLayerQuad::Create(JNIEnv *aEnv, const VRLayerQuadPtr& aLayer, const OculusLayerPtr& aSource) {
   auto result = std::make_shared<OculusLayerQuad>();
   result->layer = aLayer;
   if (aSource) {
-    result->TakeSurface(aSource);
+    result->TakeSurface(aEnv, aSource);
   }
   return result;
 }
@@ -68,11 +68,11 @@ OculusLayerQuad::Update(const ovrTracking2& aTracking, ovrTextureSwapChain* aCle
 // OculusLayerCylinder
 
 OculusLayerCylinderPtr
-OculusLayerCylinder::Create(const VRLayerCylinderPtr& aLayer, const OculusLayerPtr& aSource) {
+OculusLayerCylinder::Create(JNIEnv *aEnv, const VRLayerCylinderPtr& aLayer, const OculusLayerPtr& aSource) {
   auto result = std::make_shared<OculusLayerCylinder>();
   result->layer = aLayer;
   if (aSource) {
-    result->TakeSurface(aSource);
+    result->TakeSurface(aEnv, aSource);
   }
   return result;
 }
@@ -87,7 +87,7 @@ void
 OculusLayerCylinder::Update(const ovrTracking2& aTracking, ovrTextureSwapChain* aClearSwapChain)  {
   OculusLayerSurface<VRLayerCylinderPtr, ovrLayerCylinder2>::Update(aTracking, aClearSwapChain);
   ovrLayer.HeadPose = aTracking.HeadPose;
-  ovrLayer.Header.SrcBlend = VRAPI_FRAME_LAYER_BLEND_ONE;
+  ovrLayer.Header.SrcBlend = VRAPI_FRAME_LAYER_BLEND_SRC_ALPHA;
   ovrLayer.Header.DstBlend = VRAPI_FRAME_LAYER_BLEND_ONE_MINUS_SRC_ALPHA;
 
   for ( int i = 0; i < VRAPI_FRAME_LAYER_EYE_MAX; i++ ) {

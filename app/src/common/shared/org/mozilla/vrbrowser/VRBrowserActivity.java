@@ -60,6 +60,7 @@ import org.mozilla.vrbrowser.telemetry.GleanMetricsService;
 import org.mozilla.vrbrowser.telemetry.TelemetryWrapper;
 import org.mozilla.vrbrowser.ui.OffscreenDisplay;
 import org.mozilla.vrbrowser.ui.adapters.Language;
+import org.mozilla.vrbrowser.ui.widgets.AppServicesProvider;
 import org.mozilla.vrbrowser.ui.widgets.KeyboardWidget;
 import org.mozilla.vrbrowser.ui.widgets.NavigationBarWidget;
 import org.mozilla.vrbrowser.ui.widgets.RootWidget;
@@ -305,6 +306,8 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         checkForCrash();
 
         mLifeCycle.setCurrentState(Lifecycle.State.CREATED);
+
+        getServicesProvider().getDownloadsManager().init();
     }
 
     protected void initializeWidgets() {
@@ -493,6 +496,8 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
         BitmapCache.getInstance(this).onDestroy();
 
         SessionStore.get().onDestroy();
+
+        getServicesProvider().getDownloadsManager().end();
 
         super.onDestroy();
         mLifeCycle.setCurrentState(Lifecycle.State.DESTROYED);
@@ -700,7 +705,22 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
             return;
         }
         if (!mWindows.handleBack()) {
-            super.onBackPressed();
+            if (DeviceType.isPicoVR()) {
+                mWindows.getFocusedWindow().showConfirmPrompt(
+                        getString(R.string.app_name),
+                        getString(R.string.exit_confirm_dialog_body, getString(R.string.app_name)),
+                        new String[]{
+                                getString(R.string.exit_confirm_dialog_button_cancel),
+                                getString(R.string.exit_confirm_dialog_button_quit),
+                        }, index -> {
+                            if (index == PromptDialogWidget.POSITIVE) {
+                                VRBrowserActivity.super.onBackPressed();
+                            }
+                        });
+
+            } else {
+                super.onBackPressed();
+            }
         }
     }
 
@@ -1003,7 +1023,8 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
             return;
         }
         mIsPresentingImmersive = true;
-        mWindows.enterImmersiveMode();
+        runOnUiThread(() -> mWindows.enterImmersiveMode());
+
         TelemetryWrapper.startImmersive();
         GleanMetricsService.startImmersive();
         PauseCompositorRunnable runnable = new PauseCompositorRunnable();
@@ -1027,7 +1048,8 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
             return;
         }
         mIsPresentingImmersive = false;
-        mWindows.exitImmersiveMode();
+        runOnUiThread(() -> mWindows.exitImmersiveMode());
+
         // Show the window in front of you when you exit immersive mode.
         resetUIYaw();
 
@@ -1615,6 +1637,12 @@ public class VRBrowserActivity extends PlatformActivity implements WidgetManager
     @Override
     public void updateLocale(@NonNull Context context) {
         onConfigurationChanged(context.getResources().getConfiguration());
+    }
+
+    @Override
+    @NonNull
+    public AppServicesProvider getServicesProvider() {
+        return (AppServicesProvider)getApplication();
     }
 
     private native void addWidgetNative(int aHandle, WidgetPlacement aPlacement);

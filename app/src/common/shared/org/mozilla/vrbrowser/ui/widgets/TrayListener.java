@@ -6,5 +6,6 @@ public interface TrayListener {
     default void onAddWindowClicked() {}
     default void onHistoryClicked() {}
     default void onTabsClicked() {}
+    default void onDownloadsClicked() {}
     default void onEnvironmentPassthroughClicked() {}
 }
