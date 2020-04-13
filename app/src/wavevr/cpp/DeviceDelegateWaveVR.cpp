@@ -1006,7 +1006,7 @@ DeviceDelegateWaveVR::DrawPassthroughVideo(const device::Eye aWhich) {
   } else if (aWhich == device::Eye::Right) {
     glStateCacheFlush();
     if (!m.arglContextSettingsR) {
-      m.arglContextSettingsR = arglSetupForCurrentContext(&m.arCparamL, m.arVideoPixelFormat);
+      m.arglContextSettingsR = arglSetupForCurrentContext(&m.arCparamR, m.arVideoPixelFormat);
       arglPixelBufferSizeSet(m.arglContextSettingsR, m.arVideoWidthPadded, m.arVideoHeight);
     }
 
